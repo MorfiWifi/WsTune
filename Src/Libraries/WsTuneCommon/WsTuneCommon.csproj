@@ -1,0 +1,21 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+    <PropertyGroup>
+        <LangVersion>latest</LangVersion>
+        <ImplicitUsings>enable</ImplicitUsings>
+        <Nullable>enable</Nullable>
+        <TargetFrameworks>net9.0;netstandard2.0</TargetFrameworks>
+    </PropertyGroup>
+
+    <ItemGroup>
+      <PackageReference Include="MessagePack.Annotations" Version="3.1.4" />
+      <PackageReference Include="Nerdbank.GitVersioning" Version="3.8.38-alpha">
+        <PrivateAssets>all</PrivateAssets>
+        <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+      </PackageReference>
+      <PackageReference Include="System.Buffers" Version="4.6.1" />
+      <PackageReference Include="System.Net.WebSockets" Version="4.3.0" />
+      <PackageReference Include="System.Threading.Channels" Version="9.0.6" />
+    </ItemGroup>
+
+</Project>

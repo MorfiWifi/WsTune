@@ -1,0 +1,33 @@
+<Project Sdk="Microsoft.NET.Sdk.Web">
+
+    <PropertyGroup>
+        <TargetFramework>net9.0</TargetFramework>
+        <Nullable>enable</Nullable>
+        <ImplicitUsings>enable</ImplicitUsings>
+        <DockerDefaultTargetOS>Linux</DockerDefaultTargetOS>
+    </PropertyGroup>
+
+    <ItemGroup>
+        <PackageReference Include="MessagePack" Version="3.1.4" />
+        <PackageReference Include="Microsoft.AspNetCore.OpenApi" Version="9.0.0"/>
+    </ItemGroup>
+
+    <ItemGroup>
+      <Folder Include="wwwroot\" />
+    </ItemGroup>
+
+    <ItemGroup>
+      <ProjectReference Include="..\Libraries\WsTune.SignalR.Extensions\WsTune.SignalR.Extensions.csproj" />
+      <ProjectReference Include="..\WsTuneCli.Host\WsTuneCli.Host.csproj" />
+      <ProjectReference Include="..\WsTuneCli.Listener\WsTuneCli.Listener.csproj" />
+      <ProjectReference Include="..\WsTuneCli.Server\WsTuneCli.Server.csproj" />
+      <ProjectReference Include="..\Libraries\WsTuneCommon\WsTuneCommon.csproj" />
+    </ItemGroup>
+
+    <ItemGroup>
+      <Content Include="..\.dockerignore">
+        <Link>.dockerignore</Link>
+      </Content>
+    </ItemGroup>
+
+</Project>
