@@ -29,15 +29,12 @@ public class Program
         // Serve static files from wwwroot (default)
         app.UseDefaultFiles(); // Looks for index.html by default
         app.UseStaticFiles();
-        
-        app.MapOpenApi();
 
         return app;
     }
 
     public static AppSettings RegisterServices(WebApplicationBuilder builder)
     {
-        builder.Services.AddOpenApi();
         builder.Services.AddSignalR(options =>
             {
                 options.EnableDetailedErrors = true;

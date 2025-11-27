@@ -21,6 +21,8 @@ if (mode == "server")
 Storage.ListenerIdentity = Guid.NewGuid().ToString();
 
 var builder = WebApplication.CreateBuilder(args);
+
+// builder.AddServiceDefaults();
 // builder.Services.AddCors();
 
 builder.Services.AddHostedService<InternalHubService>();
@@ -28,6 +30,8 @@ builder.Services.AddHostedService<InternalHubService>();
 AppSettings appSettings = WsTuneCli.Host.Program.RegisterServices(builder);
 
 var app = builder.Build();
+
+// app.MapDefaultEndpoints();
 
 //web socket for VNC
 app.UseWebsockify(appSettings.WebSockifyEndpoint);

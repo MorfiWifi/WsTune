@@ -1,10 +1,12 @@
-﻿using MessagePack;
+﻿using System.Diagnostics.CodeAnalysis;
+using MessagePack;
 using WsTune.SignalR.Extensions;
 using WsTuneCli.Listener.Transport;
 using WsTuneCommon.Models;
 
 namespace WsAllInOne.Services;
 
+// [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicConstructors)]
 public class InternalHubService : BackgroundService
 {
     #region Ctor
