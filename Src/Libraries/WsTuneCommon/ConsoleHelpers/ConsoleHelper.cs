@@ -21,6 +21,9 @@ public class ConsoleHelper
 
     public static void DisableQuickEditMode()
     {
+        if (!RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
+            return;
+        
         IntPtr handle = GetStdHandle(STD_INPUT_HANDLE);
         if (GetConsoleMode(handle, out uint mode))
         {
