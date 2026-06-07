@@ -6,7 +6,7 @@ namespace WsTuneCli.Listener.Extensions;
 
 public static class TunnelConfigExtensions
 {
-    public static TcpFw4Config CreateTcpConfiguration(this TunnelConfigDto config, string identity, BasicHubOutbound hubOutbounds)
+    public static TcpFw4Config CreateTcpConfiguration(this TunnelConfigDto config, string identity, PipelinedHubOutbound hubOutbounds)
     {
         var tcpConfiguration = new TcpFw4Config
         {
@@ -23,21 +23,21 @@ public static class TunnelConfigExtensions
 
 
     public static Func<ForwardModelV4, CancellationToken, Task> CreateOnListenerDataReceivedHandler(
-        BasicHubOutbound hubOutbounds)
-        => async (context, token) =>
+        PipelinedHubOutbound hubOutbounds)
+        => (context, token) =>
         {
             var packet = new DataPacket
             {
                 ConnectionId = context.ConnectionId,
-                Data = context.Data[..context.Length]
+                Data = context.Data
             };
 
-            await hubOutbounds.SendAsync("Forward", packet);
+            return hubOutbounds.EnqueueDataAsync("Forward", packet, token).AsTask();
         };
 
 
     public static Func<ForwardModelV4, CancellationToken, Task> CreateOnClientConnectedHandler(TunnelConfigDto config,
-        string identity, BasicHubOutbound hubOutbounds)
+        string identity, PipelinedHubOutbound hubOutbounds)
         => async (context, token) =>
         {
             var packet = new ConnectionPacket
@@ -56,7 +56,7 @@ public static class TunnelConfigExtensions
         };
 
     public static Func<ForwardModelV4, CancellationToken, Task> CreateOnClientDisconnectedHandler(
-        BasicHubOutbound hubOutbounds)
+        PipelinedHubOutbound hubOutbounds)
         => async (context, token) =>
         {
             ListenerSingletons.ConnectionFwName.TryRemove(context.ConnectionId, out _);

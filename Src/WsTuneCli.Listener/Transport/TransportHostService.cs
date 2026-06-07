@@ -1,8 +1,8 @@
-﻿using MessagePack;
-using Microsoft.Extensions.DependencyInjection;
+﻿using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using WsTune.SignalR.Extensions;
+using WsTuneCommon;
 using WsTuneCli.Listener.Extensions;
 using WsTuneCommon.Implementation;
 using WsTuneCommon.Interfaces;
@@ -28,7 +28,7 @@ public class TransportHostService : BackgroundService
 
     protected override async Task ExecuteAsync(CancellationToken cancellationToken)
     {
-        var hubOutbounds = new BasicHubOutbound();
+        var hubOutbounds = new PipelinedHubOutbound();
         
         var tunnels = _appSettings.Configs;
 
@@ -38,6 +38,7 @@ public class TransportHostService : BackgroundService
         var options = GenerateHubOptions(hubInbound, hubOutbounds, $"{_appSettings.SignalREndpoint}?identity={_appSettings.Identity}");
         BeatHub bHub = new BeatHub(options, _logger);
 
+        hubOutbounds.StartPump(cancellationToken);
         var hubTask = bHub.Start(cancellationToken);
 
         //make sure connection is made (AND server is Receiving THIS)
@@ -58,7 +59,7 @@ public class TransportHostService : BackgroundService
         await Task.WhenAll(fwTasks);
     }
     
-   public static BeatHubOptions GenerateHubOptions(IHubInbounds udpHubInbounds, BasicHubOutbound udpHubOutbounds,
+   public static BeatHubOptions GenerateHubOptions(IHubInbounds udpHubInbounds, IHubOutbounds udpHubOutbounds,
         string singlarEndpoint)
     {
         return new BeatHubOptions()
@@ -70,14 +71,8 @@ public class TransportHostService : BackgroundService
             HeartBitFunctionName = "Ping",
 
             CustomConfigurationsFunc = connectionBuilder =>
-            {
-                return connectionBuilder.AddMessagePackProtocol(options =>
-                {
-                    // Optional: customize MessagePack settings
-                    options.SerializerOptions = MessagePackSerializerOptions.Standard
-                        .WithCompression(MessagePackCompression.Lz4BlockArray);
-                });
-            }
+                connectionBuilder.AddMessagePackProtocol(options =>
+                    options.SerializerOptions = TunnelMessagePackOptions.SignalR)
         };
     }
 }

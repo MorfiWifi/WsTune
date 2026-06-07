@@ -41,14 +41,10 @@ public class Program
                 options.MaximumReceiveMessageSize = 100 * 1024 * 1024; // 100MB, Increased from 64KB to handle larger files
                 options.KeepAliveInterval = TimeSpan.FromSeconds(15); // Send keep-alive every 15 seconds
                 options.ClientTimeoutInterval = TimeSpan.FromSeconds(60); // Client timeout increased to 60 seconds
-                options.MaximumParallelInvocationsPerClient = 10;
+                options.MaximumParallelInvocationsPerClient = 64;
             })
             .AddMessagePackProtocol(options =>
-            {
-                // Optional: match the same compression settings as server
-                options.SerializerOptions = MessagePackSerializerOptions.Standard
-                    .WithCompression(MessagePackCompression.Lz4BlockArray);
-            })
+                options.SerializerOptions = TunnelMessagePackOptions.SignalR)
             ;
 
         builder.Services.ConfigureHttpJsonOptions(options =>

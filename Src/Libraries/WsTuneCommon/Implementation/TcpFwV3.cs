@@ -82,13 +82,13 @@ public class TcpFwV3 : IFwV3
                     {
                         // _client = await _listener.AcceptTcpClientAsync(cancellationToken);
                         _client = await _listener.AcceptTcpClientAsync();
-                        _client.NoDelay = true; // Low latency
+                        TunnelBuffers.ConfigureTcpClient(_client);
 
                         if (_onServerDataReceived != null)
                         {
                             // Connect to target only after client connection (fixes problem 1)
                             _server = new TcpClient();
-                            _server.NoDelay = true;
+                            TunnelBuffers.ConfigureTcpClient(_server);
                             // await _server.ConnectAsync(_targetEndPoint.Address, _targetEndPoint.Port, cancellationToken);
                             await _server.ConnectAsync(_targetEndPoint.Address, _targetEndPoint.Port);
 
@@ -98,7 +98,7 @@ public class TcpFwV3 : IFwV3
                                 var stream = _server.GetStream();
                                 while (!cancellationToken.IsCancellationRequested)
                                 {
-                                    byte[] buffer = ArrayPool<byte>.Shared.Rent(65536); // 64KB
+                                    byte[] buffer = ArrayPool<byte>.Shared.Rent(TunnelBuffers.ReadBufferSize);
 
                                     int length = 0;
                                     try
@@ -116,11 +116,9 @@ public class TcpFwV3 : IFwV3
                                         var model = new ForwardModel
                                         {
                                             Accessor = this,
-                                            Data = new  byte[length],
+                                            Data = TunnelBuffers.CopyFromRentedBuffer(buffer, length),
                                             Length = length
                                         };
-                                        
-                                        Array.Copy(buffer ,  0, model.Data, 0, length);
 
 
                                         try
@@ -143,7 +141,7 @@ public class TcpFwV3 : IFwV3
                                     }
                                     finally
                                     {
-                                        ArrayPool<byte>.Shared.Return(buffer, clearArray: true); // Clear for security
+                                        TunnelBuffers.ReturnRentedBuffer(buffer);
                                     }
                                 }
 
@@ -155,7 +153,7 @@ public class TcpFwV3 : IFwV3
                             var clientStream = _client.GetStream();
                             while (!cancellationToken.IsCancellationRequested)
                             {
-                                byte[] buffer = ArrayPool<byte>.Shared.Rent(65536); // 64KB
+                                byte[] buffer = ArrayPool<byte>.Shared.Rent(TunnelBuffers.ReadBufferSize);
 
                                 int length = 0;
                                 try
@@ -173,12 +171,9 @@ public class TcpFwV3 : IFwV3
                                     var model = new ForwardModel
                                     {
                                         Accessor = this,
-                                        // Data = dataSpan.ToArray(),
-                                        Data = new  byte[length],
+                                        Data = TunnelBuffers.CopyFromRentedBuffer(buffer, length),
                                         Length = length
                                     };
-                                    
-                                    Array.Copy(buffer ,  0, model.Data, 0, length);
 
                                     try
                                     {
@@ -198,6 +193,10 @@ public class TcpFwV3 : IFwV3
                                     Console.WriteLine($"Listener read error: {ex.Message}");
                                     break;
                                 }
+                                finally
+                                {
+                                    TunnelBuffers.ReturnRentedBuffer(buffer);
+                                }
                             }
 
                             // Close server on client disconnect
@@ -212,7 +211,7 @@ public class TcpFwV3 : IFwV3
                             var stream = _client.GetStream();
                             while (!cancellationToken.IsCancellationRequested)
                             {
-                                byte[] buffer = ArrayPool<byte>.Shared.Rent(65536); // 64KB
+                                byte[] buffer = ArrayPool<byte>.Shared.Rent(TunnelBuffers.ReadBufferSize);
                                 int length = 0;
                                 try
                                 {
@@ -230,12 +229,9 @@ public class TcpFwV3 : IFwV3
                                     var model = new ForwardModel
                                     {
                                         Accessor = this,
-                                        // Data = dataSpan.ToArray(),
-                                        Data = new byte[length],
+                                        Data = TunnelBuffers.CopyFromRentedBuffer(buffer, length),
                                         Length = length
                                     };
-
-                                    Array.Copy(buffer ,  0, model.Data, 0, length);
                                     
                                     try
                                     {
@@ -257,7 +253,7 @@ public class TcpFwV3 : IFwV3
                                 }
                                 finally
                                 {
-                                    ArrayPool<byte>.Shared.Return(buffer, clearArray: true); // Clear for security
+                                    TunnelBuffers.ReturnRentedBuffer(buffer);
                                 }
                             }
                         }
@@ -298,7 +294,7 @@ public class TcpFwV3 : IFwV3
 
                         while (!cancellationToken.IsCancellationRequested)
                         {
-                            byte[] buffer = ArrayPool<byte>.Shared.Rent(65536); // 64KB
+                            byte[] buffer = ArrayPool<byte>.Shared.Rent(TunnelBuffers.ReadBufferSize);
                             int length = 0;
                             try
                             {
@@ -313,12 +309,9 @@ public class TcpFwV3 : IFwV3
                                 var model = new ForwardModel
                                 {
                                     Accessor = this,
-                                    // Data = buffer.AsSpan(0,length).ToArray(),
-                                    Data = new  byte[length],
+                                    Data = TunnelBuffers.CopyFromRentedBuffer(buffer, length),
                                     Length = length
                                 };
-
-                                Array.Copy(buffer ,  0, model.Data, 0, length);
                                 
                                 try
                                 {

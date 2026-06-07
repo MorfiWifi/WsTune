@@ -121,7 +121,7 @@ public class BeatHub : IAsyncDisposable
         var connectionBuilder = new HubConnectionBuilder()
             .WithUrl(_options.Url)
             .WithAutomaticReconnect()
-            .ConfigureLogging(logging => logging.SetMinimumLevel(LogLevel.Debug));
+            .ConfigureLogging(logging => logging.SetMinimumLevel(LogLevel.Warning));
 
         if (_options.CustomConfigurationsFunc is not null)
         {

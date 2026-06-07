@@ -64,6 +64,19 @@ public class TcpFwV4 : IFwV4
 
     public string Name { get; }
 
+    /// <summary>Stops accepting new listener connections (unblocks <see cref="RunAsync"/> on cancel).</summary>
+    public void RequestStop()
+    {
+        try
+        {
+            _listener?.Stop();
+        }
+        catch
+        {
+            // Listener may already be stopped.
+        }
+    }
+
     public async Task SendDataToListenerAsync(Guid id, byte[] data, int length,
         CancellationToken cancellationToken)
     {
@@ -88,7 +101,7 @@ public class TcpFwV4 : IFwV4
     public async Task OpenServerConnectionAsync(Guid connectionId, CancellationToken cancellationToken)
     {
         var tcpClient = new TcpClient();
-        tcpClient.NoDelay = true;
+        TunnelBuffers.ConfigureTcpClient(tcpClient);
         // await tcpClient.ConnectAsync(_targetEndPoint.Address, _targetEndPoint.Port, cancellationToken);
         await tcpClient.ConnectAsync(_targetEndPoint.Address, _targetEndPoint.Port);
         _serverConnections[connectionId] = tcpClient;
@@ -179,9 +192,17 @@ public class TcpFwV4 : IFwV4
             {
                 // client = await _listener.AcceptTcpClientAsync(cancellationToken);
                 client = await _listener.AcceptTcpClientAsync();
-                client.NoDelay = true; // Low latency
+                TunnelBuffers.ConfigureTcpClient(client);
             }
             catch (OperationCanceledException)
+            {
+                break;
+            }
+            catch (SocketException)
+            {
+                break;
+            }
+            catch (ObjectDisposedException)
             {
                 break;
             }
@@ -256,7 +277,7 @@ public class TcpFwV4 : IFwV4
     {
         while (!cancellationToken.IsCancellationRequested)
         {
-            byte[] buffer = ArrayPool<byte>.Shared.Rent(65536);
+            byte[] buffer = ArrayPool<byte>.Shared.Rent(TunnelBuffers.ReadBufferSize);
 
             try
             {
@@ -272,12 +293,9 @@ public class TcpFwV4 : IFwV4
                 {
                     ConnectionId = connectionId,
                     Accessor = this,
-                    // Data = buffer.AsSpan(0, length).ToArray(),
-                    Data = new  byte[length],
+                    Data = TunnelBuffers.CopyFromRentedBuffer(buffer, length),
                     Length = length
                 };
-
-                Array.Copy(buffer ,  0, model.Data, 0, length);
                 
                 try
                 {
@@ -304,7 +322,7 @@ public class TcpFwV4 : IFwV4
             }
             finally
             {
-                ArrayPool<byte>.Shared.Return(buffer, clearArray: true);
+                TunnelBuffers.ReturnRentedBuffer(buffer);
             }
         }
     }

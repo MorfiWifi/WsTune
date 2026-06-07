@@ -117,4 +117,4 @@ This project was made possible with help from [WebsockifySharp](https://github.c
 
 ## License
 
-This project is open-source. Please refer to the LICENSE file in the repository for details. (If no LICENSE exists, consider adding one, e.g., MIT.)
+This project is open-source. Please refer to the LICENSE file in the repository for details.

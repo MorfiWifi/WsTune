@@ -1,8 +1,8 @@
-﻿using MessagePack;
-using Microsoft.Extensions.DependencyInjection;
+﻿using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using WsTune.SignalR.Extensions;
+using WsTuneCommon;
 using WsTuneCommon.Models;
 
 namespace WsTuneCli.Server.Transport;
@@ -16,7 +16,7 @@ public class TransportHostService(
 
     public async Task StartAsync(CancellationToken cancellationToken)
     {
-        var hubOutbounds = new BasicHubOutbound();
+        var hubOutbounds = new PipelinedHubOutbound();
 
         var loggerFactory = LoggerFactory.Create(op => op
             .ClearProviders()
@@ -26,10 +26,11 @@ public class TransportHostService(
 
         var hubLogger = loggerFactory.CreateLogger<BeatHub>();
         
-        var hubInbound = new SeverHubInbounds(appSettings , cancellationToken);
+        var hubInbound = new SeverHubInbounds(appSettings, hubOutbounds, cancellationToken);
         var options = GenerateHubOptions(hubInbound, hubOutbounds, $"{appSettings.SignalREndpoint}?identity={appSettings.Identity}");
         BeatHub bHub = new BeatHub(options, hubLogger);
 
+        hubOutbounds.StartPump(cancellationToken);
         var hubTask = bHub.Start(cancellationToken);
 
         await Task.Delay(3_000, cancellationToken);
@@ -41,7 +42,7 @@ public class TransportHostService(
         await Task.WhenAny(hubTask, infTask);
     }
 
-    public static BeatHubOptions GenerateHubOptions(IHubInbounds udpHubInbounds, BasicHubOutbound udpHubOutbounds,
+    public static BeatHubOptions GenerateHubOptions(IHubInbounds udpHubInbounds, IHubOutbounds udpHubOutbounds,
         string singlarEndpoint)
     {
         return new BeatHubOptions()
@@ -53,14 +54,8 @@ public class TransportHostService(
             HeartBitFunctionName = "Ping",
 
             CustomConfigurationsFunc = connectionBuilder =>
-            {
-                return connectionBuilder.AddMessagePackProtocol(options =>
-                {
-                    // Optional: customize MessagePack settings
-                    options.SerializerOptions = MessagePackSerializerOptions.Standard
-                        .WithCompression(MessagePackCompression.Lz4BlockArray);
-                });
-            }
+                connectionBuilder.AddMessagePackProtocol(options =>
+                    options.SerializerOptions = TunnelMessagePackOptions.SignalR)
         };
     }
     

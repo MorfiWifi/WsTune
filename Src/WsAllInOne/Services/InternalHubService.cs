@@ -1,6 +1,7 @@
 ﻿using System.Diagnostics.CodeAnalysis;
-using MessagePack;
+using Microsoft.Extensions.DependencyInjection;
 using WsTune.SignalR.Extensions;
+using WsTuneCommon;
 using WsTuneCli.Listener.Transport;
 using WsTuneCommon.Models;
 
@@ -27,16 +28,17 @@ public class InternalHubService : BackgroundService
         //allow http server warm up
         await Task.Delay(TimeSpan.FromSeconds(5), cancellationToken);
         
-        Storage.hubOutbounds = new BasicHubOutbound();
+        Storage.hubOutbounds = new PipelinedHubOutbound();
         Storage.hubInbound = new ListenerHubInbounds(Storage.fws, cancellationToken);
         
         var options = GenerateHubOptions(Storage.hubInbound, Storage.hubOutbounds, $"http://127.0.0.1:{Storage.DefaultHttpPort}{_appSettings.SignalREndpoint}?identity={Storage.ListenerIdentity}");
         BeatHub bHub = new BeatHub(options, _logger);
 
+        Storage.hubOutbounds.StartPump(cancellationToken);
         await bHub.Start(cancellationToken);
     }
     
-    public static BeatHubOptions GenerateHubOptions(IHubInbounds udpHubInbounds, BasicHubOutbound udpHubOutbounds,
+    public static BeatHubOptions GenerateHubOptions(IHubInbounds udpHubInbounds, IHubOutbounds udpHubOutbounds,
         string singlarEndpoint)
     {
         return new BeatHubOptions()
@@ -48,14 +50,8 @@ public class InternalHubService : BackgroundService
             HeartBitFunctionName = "Ping",
 
             CustomConfigurationsFunc = connectionBuilder =>
-            {
-                return connectionBuilder.AddMessagePackProtocol(options =>
-                {
-                    // Optional: customize MessagePack settings
-                    options.SerializerOptions = MessagePackSerializerOptions.Standard
-                        .WithCompression(MessagePackCompression.Lz4BlockArray);
-                });
-            }
+                connectionBuilder.AddMessagePackProtocol(options =>
+                    options.SerializerOptions = TunnelMessagePackOptions.SignalR)
         };
     }
 }

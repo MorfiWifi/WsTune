@@ -14,12 +14,13 @@ public class SeverHubInbounds : IHubInbounds
     private readonly Dictionary<Guid, ConnectionPacket> _connectionDetails = [];
 
     private readonly AppSettings _appSettings;
+    private readonly PipelinedHubOutbound _hubOutbounds;
     private readonly CancellationToken _ct;
-    private HubConnection? _hub;
 
-    public SeverHubInbounds(AppSettings appSettings, CancellationToken ct)
+    public SeverHubInbounds(AppSettings appSettings, PipelinedHubOutbound hubOutbounds, CancellationToken ct)
     {
         _appSettings = appSettings;
+        _hubOutbounds = hubOutbounds;
         _ct = ct;
     }
 
@@ -46,8 +47,6 @@ public class SeverHubInbounds : IHubInbounds
 
     public void Register(HubConnection hub)
     {
-        _hub = hub;
-
         hub.On<ConnectionPacket>("OnOpenConnection", async (connection) =>
         {
             var found = _fws.TryGetValue(connection.ServerIdentity(), out var fw);
@@ -112,15 +111,14 @@ public class SeverHubInbounds : IHubInbounds
         });
     }
 
-    private async Task OnServerDataReceived(ForwardModelV4 accessor, CancellationToken cancellationToken)
+    private Task OnServerDataReceived(ForwardModelV4 accessor, CancellationToken cancellationToken)
     {
         var packet = new DataPacket
         {
-            Data = accessor.Data[..accessor.Length],
+            Data = accessor.Data,
             ConnectionId = accessor.ConnectionId,
         };
 
-        if (_hub is not null)
-            await _hub.SendAsync("Backward", packet, cancellationToken: cancellationToken);
+        return _hubOutbounds.EnqueueDataAsync("Backward", packet, cancellationToken).AsTask();
     }
 }

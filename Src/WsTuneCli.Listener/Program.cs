@@ -1,4 +1,5 @@
-﻿using Microsoft.Extensions.Configuration;
+﻿using System.Runtime.InteropServices;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
@@ -13,7 +14,7 @@ public class Program
     public static async Task Main(string[] args)
     {
         ConsoleHelper.DisableQuickEditMode();  // Prevent console pause on click
-
+        
         var host = Host.CreateDefaultBuilder(args)  // Pass args here
             .ConfigureAppConfiguration((hostingContext, config) =>
             {

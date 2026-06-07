@@ -38,7 +38,7 @@ public class Storage
         ]);
 
 
-    public static BasicHubOutbound? hubOutbounds;
+    public static PipelinedHubOutbound? hubOutbounds;
     public static ListenerHubInbounds? hubInbound;
     public static Dictionary<string, IFwV4> fws = [];
     

@@ -11,7 +11,7 @@ public class THub : Hub
         if (found is false || config.detail is null)
             return;
 
-        config.lastUpdate = DateTime.Now;
+        config.lastUpdate = DateTime.UtcNow;
         await Clients.Group(config.detail.Destination).SendAsync("OnDataRceaved", packet);
     }
 
@@ -21,13 +21,13 @@ public class THub : Hub
         if (found is false || config.detail is null)
             return;
 
-        config.lastUpdate = DateTime.Now;
+        config.lastUpdate = DateTime.UtcNow;
         await Clients.Group(config.detail.Origin).SendAsync("OnDataRceaved", packet);
     }
 
     public async Task ForwardConnection(ConnectionPacket packet)
     {
-        HostSingletons.ConnectionDetails[packet.ConnectionId] = (DateTime.Now, packet);
+        HostSingletons.ConnectionDetails[packet.ConnectionId] = (DateTime.UtcNow, packet);
 
         //just for server
         await Clients.Group(packet.Destination).SendAsync("OnOpenConnection", packet);

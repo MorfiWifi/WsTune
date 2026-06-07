@@ -21,4 +21,5 @@ public interface IFwV4
     
     Task DisposeClientAsync(Guid id);
     Task RunAsync(CancellationToken cancellationToken);
+    void RequestStop();
 }
