@@ -38,19 +38,25 @@ public sealed class TunnelSendPump : IAsyncDisposable
         if (_sendAsync is null)
             return;
 
-        await foreach (var item in _channel.Reader.ReadAllAsync(cancellationToken).ConfigureAwait(false))
+        // Drain loop preserves per-pump FIFO order without IAsyncEnumerable,
+        // which is unavailable on netstandard2.0/net48.
+        var reader = _channel.Reader;
+        while (await reader.WaitToReadAsync(cancellationToken).ConfigureAwait(false))
         {
-            try
+            while (reader.TryRead(out var item))
             {
-                await _sendAsync(item, cancellationToken).ConfigureAwait(false);
-            }
-            catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
-            {
-                break;
-            }
-            catch (Exception ex)
-            {
-                Console.WriteLine($"Tunnel send pump error: {ex.Message}");
+                try
+                {
+                    await _sendAsync(item, cancellationToken).ConfigureAwait(false);
+                }
+                catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+                {
+                    return;
+                }
+                catch (Exception ex)
+                {
+                    Console.WriteLine($"Tunnel send pump error: {ex.Message}");
+                }
             }
         }
     }

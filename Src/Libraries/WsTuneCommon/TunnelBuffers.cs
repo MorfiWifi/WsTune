@@ -12,7 +12,11 @@ public static class TunnelBuffers
     /// </summary>
     public static byte[] CopyFromRentedBuffer(byte[] rented, int length)
     {
+#if NET6_0_OR_GREATER
         var data = GC.AllocateUninitializedArray<byte>(length);
+#else
+        var data = new byte[length];
+#endif
         rented.AsSpan(0, length).CopyTo(data);
         return data;
     }
