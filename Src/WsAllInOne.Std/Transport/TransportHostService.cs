@@ -2,6 +2,7 @@
 using Microsoft.AspNetCore.SignalR.Client;
 using Microsoft.Extensions.DependencyInjection;
 using WsTuneCli.Listener.Extensions;
+using WsTuneCommon;
 using WsTuneCommon.Implementation;
 using WsTuneCommon.Interfaces;
 using WsTuneCommon.Models;
@@ -19,6 +20,10 @@ public class TransportHostService /*: IHostedService*/
 
     public async Task StartAsync(CancellationToken cancellationToken)
     {
+        // Clients always get a unique identity so multiple copies of a shared app don't collide.
+        _appSettings.Identity = IdentityGenerator.ResolveClient(_appSettings.Identity);
+        Console.WriteLine($"Listener identity: {_appSettings.Identity}");
+
         var tunnels = _appSettings.Configs;
 
         var fws = new Dictionary<string, IFwV4>();

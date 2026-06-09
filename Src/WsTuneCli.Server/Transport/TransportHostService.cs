@@ -16,6 +16,10 @@ public class TransportHostService(
 
     public async Task StartAsync(CancellationToken cancellationToken)
     {
+        // Server identity is the address clients target: prefer the configured value, auto-generate as fallback.
+        appSettings.Identity = IdentityGenerator.ResolveServer(appSettings.Identity);
+        logger.LogInformation("Server identity: {Identity}", appSettings.Identity);
+
         var hubOutbounds = new PipelinedHubOutbound();
 
         var loggerFactory = LoggerFactory.Create(op => op

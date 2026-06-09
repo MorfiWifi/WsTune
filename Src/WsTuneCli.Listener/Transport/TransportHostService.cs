@@ -28,8 +28,12 @@ public class TransportHostService : BackgroundService
 
     protected override async Task ExecuteAsync(CancellationToken cancellationToken)
     {
+        // Clients always get a unique identity so multiple copies of a shared app don't collide.
+        _appSettings.Identity = IdentityGenerator.ResolveClient(_appSettings.Identity);
+        _logger.LogInformation("Listener identity: {Identity}", _appSettings.Identity);
+
         var hubOutbounds = new PipelinedHubOutbound();
-        
+
         var tunnels = _appSettings.Configs;
 
         var fws = new Dictionary<string, IFwV4>();

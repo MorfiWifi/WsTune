@@ -12,6 +12,8 @@ public static class TunnelConfigExtensions
         {
             Name = config.Name,
             ListenPort = config.ListenPort,
+            TargetHost = config.TargetHost,
+            TargetPort = config.TargetPort,
             EnableWatchdog = true,
             OnListenerDataReceived = CreateOnListenerDataReceivedHandler(hubOutbounds),
             OnClientConnected = CreateOnClientConnectedHandler(config, identity, hubOutbounds),

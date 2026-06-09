@@ -26,7 +26,6 @@ public class TcpFwV4 : IFwV4
     private readonly Func<ForwardModelV4, CancellationToken, Task>? _onServerDataReceived;
     private readonly Func<ForwardModelV4, CancellationToken, Task>? _onClientConnected;
     private readonly Func<ForwardModelV4, CancellationToken, Task>? _onClientDisconnected;
-    private readonly IPEndPoint _targetEndPoint;
 
     public TcpFwV4(
         TcpFw4Config config
@@ -50,8 +49,6 @@ public class TcpFwV4 : IFwV4
 
         if (config.OnListenerDataReceived is not null)
             _listener = new TcpListener(IPAddress.Any, _listenPort);
-
-        _targetEndPoint = new IPEndPoint(IPAddress.Parse(_targetHost), _targetPort);
     }
 
     #endregion
@@ -102,8 +99,8 @@ public class TcpFwV4 : IFwV4
     {
         var tcpClient = new TcpClient();
         TunnelBuffers.ConfigureTcpClient(tcpClient);
-        // await tcpClient.ConnectAsync(_targetEndPoint.Address, _targetEndPoint.Port, cancellationToken);
-        await tcpClient.ConnectAsync(_targetEndPoint.Address, _targetEndPoint.Port);
+        // ConnectAsync(host, port) resolves hostnames via DNS and accepts literal IPs.
+        await tcpClient.ConnectAsync(_targetHost, _targetPort);
         _serverConnections[connectionId] = tcpClient;
         _lastActivity[connectionId] = DateTime.UtcNow;
 
