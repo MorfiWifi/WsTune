@@ -1,10 +1,23 @@
-<Project Sdk="Microsoft.NET.Sdk">
+<!--
+  TreatAsLocalProperty lets this project override the publish-related GLOBAL properties the WebApi's
+  Docker build passes on the command line (-p:PublishTrimmed=true etc.). This library is a single
+  small netstandard2.0 assembly (shared by the .NET 10 ends and the net48 WsAllInOne.Std client) and
+  must NOT be trimmed/single-filed: netstandard2.0 can't be trimmed (NETSDK1124), and MessagePack
+  DTOs here are reflection-accessed so trimming them would be unsafe anyway.
+-->
+<Project Sdk="Microsoft.NET.Sdk" TreatAsLocalProperty="PublishTrimmed;PublishSingleFile;EnableCompressionInSingleFile">
 
     <PropertyGroup>
         <LangVersion>latest</LangVersion>
         <ImplicitUsings>enable</ImplicitUsings>
         <Nullable>enable</Nullable>
         <TargetFramework>netstandard2.0</TargetFramework>
+
+        <!-- Never trim/single-file this package, even when a consumer publishes with those globals. -->
+        <PublishTrimmed>false</PublishTrimmed>
+        <PublishSingleFile>false</PublishSingleFile>
+        <EnableCompressionInSingleFile>false</EnableCompressionInSingleFile>
+        <IsTrimmable>false</IsTrimmable>
     </PropertyGroup>
 
     <ItemGroup>
