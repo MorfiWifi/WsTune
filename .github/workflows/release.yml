@@ -1,0 +1,124 @@
+name: Build & Release WSTUN
+
+on:
+  push:
+    branches: [ main ]
+  workflow_dispatch:
+
+# Required to create the tag + GitHub Release.
+permissions:
+  contents: write
+
+# Never let two release runs race for the same tag.
+concurrency:
+  group: wstun-release
+  cancel-in-progress: false
+
+jobs:
+  release:
+    # windows-latest can build everything: the net48 Std component (Windows-only)
+    # plus cross-published self-contained .NET 10 binaries for win/linux.
+    runs-on: windows-latest
+
+    steps:
+      - name: Checkout (full history for versioning)
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0   # Nerdbank.GitVersioning needs the whole history to compute height.
+
+      - name: Setup .NET 10 SDK
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+
+      - name: Compute version (Nerdbank.GitVersioning)
+        id: ver
+        shell: pwsh
+        run: |
+          dotnet tool install --global nbgv
+          $env:PATH = "$env:USERPROFILE\.dotnet\tools;$env:PATH"
+          $v = nbgv get-version -f json | ConvertFrom-Json
+          Write-Host "Resolved version: $($v.SimpleVersion) (SemVer2: $($v.SemVer2))"
+          "version=$($v.SimpleVersion)" >> $env:GITHUB_OUTPUT
+          "semver2=$($v.SemVer2)"       >> $env:GITHUB_OUTPUT
+
+      - name: Build release bundle
+        shell: pwsh
+        env:
+          VERSION: ${{ steps.ver.outputs.version }}
+          SEMVER:  ${{ steps.ver.outputs.semver2 }}
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $out = Join-Path $env:GITHUB_WORKSPACE 'artifacts'
+          New-Item -ItemType Directory -Force -Path $out | Out-Null
+
+          # --- Self-contained, single-file .NET 10 components (mirrors build-wstun-release.ps1) ---
+          $projects = @(
+            @{ Name = 'wstun-server'; Path = 'Src/WsTuneCli.Server/WsTuneCli.Server.csproj' },
+            @{ Name = 'wstun-client'; Path = 'Src/WsTuneCli.Listener/WsTuneCli.Listener.csproj' }
+          )
+          $rids = @('win-x86', 'win-x64', 'linux-x64')
+
+          foreach ($proj in $projects) {
+            foreach ($rid in $rids) {
+              Write-Host "::group::Publish $($proj.Name) ($rid)"
+              $pubDir = Join-Path $out "$($proj.Name)-$rid"
+              dotnet publish $proj.Path `
+                -c Release -r $rid -f net10.0 --self-contained `
+                -p:PublishSingleFile=true `
+                -p:PublishTrimmed=false `
+                -p:EnableCompressionInSingleFile=true `
+                -p:Version=$env:VERSION -p:AssemblyVersion=$env:VERSION -p:FileVersion=$env:VERSION `
+                -o $pubDir
+              if ($LASTEXITCODE -ne 0) { throw "publish failed: $($proj.Name) / $rid" }
+              Compress-Archive -Path "$pubDir/*" -DestinationPath (Join-Path $out "$($proj.Name)-$rid-v$($env:VERSION).zip") -Force
+              Write-Host "::endgroup::"
+            }
+          }
+
+          # --- net48 Std component (Windows-only, framework-dependent x86) ---
+          Write-Host "::group::Build wstun-std (net48 x86)"
+          $stdDir = Join-Path $out 'wstun-std'
+          dotnet build Src/WsAllInOne.Std/WsAllInOne.Std.csproj `
+            -c Release -p:Platform=AnyCPU -p:PlatformTarget=x86 `
+            -p:Version=$env:VERSION -p:FileVersion=$env:VERSION `
+            -o $stdDir
+          if ($LASTEXITCODE -ne 0) { throw "Std build failed" }
+          Compress-Archive -Path "$stdDir/*" -DestinationPath (Join-Path $out "wstun-std-net48-x86-v$($env:VERSION).zip") -Force
+          Write-Host "::endgroup::"
+
+          # --- Build manifest (parity with build-wstun-release.ps1) ---
+          [ordered]@{
+            version   = $env:VERSION
+            semVer2   = $env:SEMVER
+            buildDate = (Get-Date).ToUniversalTime().ToString('yyyy-MM-dd HH:mm:ss') + ' UTC'
+            commit    = $env:GITHUB_SHA
+            runtimes  = $rids
+            components = @(
+              @{ name = 'wstun-server'; framework = 'net10.0'; rids = $rids },
+              @{ name = 'wstun-client'; framework = 'net10.0'; rids = $rids },
+              @{ name = 'wstun-std';    framework = 'net48';   rids = @('win-x86') }
+            )
+          } | ConvertTo-Json -Depth 5 | Out-File (Join-Path $out 'build-info.json') -Encoding utf8
+
+          Write-Host "Artifacts:"
+          Get-ChildItem $out -File | ForEach-Object { Write-Host "  $($_.Name)  ($([math]::Round($_.Length/1MB,2)) MB)" }
+
+      - name: Publish GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: v${{ steps.ver.outputs.version }}
+          name: WSTUN v${{ steps.ver.outputs.version }}
+          generate_release_notes: true
+          fail_on_unmatched_files: true
+          body: |
+            Automated release built from `${{ github.sha }}`.
+
+            **Components**
+            - `wstun-server` / `wstun-client` — self-contained single-file .NET 10 (`win-x86`, `win-x64`, `linux-x64`).
+            - `wstun-std` — .NET Framework 4.8 (Windows x86, requires .NET Framework on the target).
+
+            > Note: `linux-x64` binaries are delivered as `.zip`, which does not preserve the Unix executable bit — run `chmod +x wstun-*` after extracting.
+          files: |
+            artifacts/*.zip
+            artifacts/build-info.json
