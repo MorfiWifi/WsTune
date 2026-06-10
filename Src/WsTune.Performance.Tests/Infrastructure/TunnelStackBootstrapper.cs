@@ -26,10 +26,22 @@ public sealed class TunnelStackBootstrapper : IAsyncDisposable
     private readonly List<Task> _forwarderTasks = [];
     private readonly Dictionary<string, IFwV4> _listenerForwarders = new();
 
+    private readonly bool _startListenerPump;
+
     public int ListenPort { get; private set; }
     public int HostPort { get; private set; }
     public string ListenerIdentity { get; } = "perf-listener";
     public string ServerIdentity { get; } = "perf-server";
+
+    /// <param name="startListenerPump">
+    /// When false, the listener's <see cref="PipelinedHubOutbound"/> pump is left unstarted —
+    /// reproducing the wiring bug where the loopback listener forgets to call StartPump. Control
+    /// plane (connect/disconnect) still works but no tunnel data ever flows.
+    /// </param>
+    public TunnelStackBootstrapper(bool startListenerPump = true)
+    {
+        _startListenerPump = startListenerPump;
+    }
 
     public async Task StartAsync(int echoPort, CancellationToken cancellationToken = default)
     {
@@ -117,7 +129,8 @@ public sealed class TunnelStackBootstrapper : IAsyncDisposable
             $"{hubUrl}?identity={ListenerIdentity}");
         var beatHub = new BeatHub(options, NullLogger<BeatHub>.Instance);
 
-        hubOutbounds.StartPump(_cts.Token);
+        if (_startListenerPump)
+            hubOutbounds.StartPump(_cts.Token);
         _listenerHubTask = beatHub.Start(_cts.Token);
 
         await WaitForHubAsync(hubOutbounds, cancellationToken).ConfigureAwait(false);
