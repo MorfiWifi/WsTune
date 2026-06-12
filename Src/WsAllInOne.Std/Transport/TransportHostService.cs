@@ -35,7 +35,7 @@ public class TransportHostService /*: IHostedService*/
             .WithAutomaticReconnect()
             .AddMessagePackProtocol(op => 
                 op.SerializerOptions = MessagePackSerializerOptions.Standard
-                .WithCompression(MessagePackCompression.Lz4BlockArray)
+                //.WithCompression(MessagePackCompression.Lz4BlockArray)
             )
             .Build();
 

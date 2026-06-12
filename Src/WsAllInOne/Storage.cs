@@ -46,5 +46,5 @@ public class Storage
     
     
     //This is docker image port
-    public static int DefaultHttpPort = 8080;
+    // public static int DefaultHttpPort = 8080;
 }
