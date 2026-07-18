@@ -6,14 +6,18 @@ namespace WsTune.Performance.Tests.Tests;
 /// <summary>
 /// Regression guard for the periodic tunnel-disconnect bug.
 ///
-/// Root cause was that BeatHub left the SignalR client on its defaults: ServerTimeout
-/// 30s against a host KeepAliveInterval of 15s (only a 2x margin), so a single jittered
-/// keep-alive tripped a false "Server timeout" disconnect. During even a millisecond
-/// reconnect, <see cref="BasicHubOutbound"/> drops in-flight tunnel packets and desyncs
-/// the tunneled TCP stream. The default reconnect policy also gave up after ~42s.
+/// Root cause (proven by frame-level capture): SignalR's ServerTimeout is WALL-CLOCK based.
+/// The default 30s (only 2x the 15s host keep-alive) is trivially tripped by a forward
+/// clock jump — on Docker Desktop/WSL2 the container clock was observed to jump +208s at
+/// once, and NTP resyncs do it in production — which SignalR misreads as "no message for
+/// 30s" and fires a FALSE disconnect. The reconnect then drops in-flight tunnel packets
+/// (<see cref="BasicHubOutbound"/>) and desyncs the tunneled TCP stream. The default
+/// reconnect policy also gave up after ~42s.
 ///
-/// These tests fail if anyone weakens the keep-alive margin or reverts to a
-/// give-up reconnect policy.
+/// Fix: ServerTimeout is set very high so realistic clock jumps / jitter cannot trip it
+/// (real drops are caught by the transport layer + FastInfiniteRetryPolicy, not this timer).
+/// These tests fail if anyone lowers ServerTimeout back into the jump-vulnerable range or
+/// reverts to a give-up reconnect policy.
 /// </summary>
 [Trait("Category", "Unit")]
 public class BeatHubReconnectConfigTests
@@ -21,17 +25,18 @@ public class BeatHubReconnectConfigTests
     // The host (THub) sends keep-alives on this cadence — see WsTuneCli.Host RegisterServices.
     private static readonly TimeSpan HostKeepAliveInterval = TimeSpan.FromSeconds(15);
 
+    // Must comfortably exceed the largest clock jump we observed (+208s) so a jump can't
+    // masquerade as server silence.
+    private static readonly TimeSpan MinSafeServerTimeout = TimeSpan.FromMinutes(5);
+
     [Fact]
-    public void Defaults_KeepAliveMargin_IsAtLeast_Triple_HostKeepAlive()
+    public void Defaults_ServerTimeout_SurvivesClockJumps()
     {
         var options = new BeatHubOptions();
 
-        // The client must tolerate several missed host keep-alives, not just two.
-        // SignalR's default (30s) is exactly 2x — the value that caused the bug.
-        Assert.True(
-            options.ServerTimeout >= TimeSpan.FromSeconds(3 * HostKeepAliveInterval.TotalSeconds),
-            $"ServerTimeout {options.ServerTimeout} must be >= 3x the host keep-alive " +
-            $"({HostKeepAliveInterval}) to avoid false 'Server timeout' disconnects.");
+        Assert.True(options.ServerTimeout >= MinSafeServerTimeout,
+            $"ServerTimeout {options.ServerTimeout} must be >= {MinSafeServerTimeout} so a wall-clock " +
+            "jump / long GC / NTP resync cannot trip a false 'Server timeout' disconnect.");
 
         Assert.True(options.ServerTimeout > TimeSpan.FromSeconds(30),
             "ServerTimeout must be greater than SignalR's default 30s (the buggy value).");
