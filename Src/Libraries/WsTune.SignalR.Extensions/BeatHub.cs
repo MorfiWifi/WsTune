@@ -120,16 +120,24 @@ public class BeatHub : IAsyncDisposable
     {
         var connectionBuilder = new HubConnectionBuilder()
             .WithUrl(_options.Url)
-            .WithAutomaticReconnect()
+            // Reconnect fast and forever. The SignalR default policy ([0,2,10,30]s then
+            // gives up) leaves multi-second data gaps and abandons the connection after
+            // ~42s, relying on the outer 60s rebuild loop.
+            .WithAutomaticReconnect(new FastInfiniteRetryPolicy())
             .ConfigureLogging(logging => logging.SetMinimumLevel(LogLevel.Warning));
 
         if (_options.CustomConfigurationsFunc is not null)
         {
             connectionBuilder = _options.CustomConfigurationsFunc(connectionBuilder);
         }
-            
+
         var hubConnection = connectionBuilder
             .Build();
+
+        // Widen the keep-alive margin so a jittered/late server keep-alive does not trip a
+        // false "Server timeout" disconnect (the root cause of periodic tunnel stalls).
+        hubConnection.ServerTimeout = _options.ServerTimeout;
+        hubConnection.KeepAliveInterval = _options.KeepAliveInterval;
 
         RegisterStatsLogger(hubConnection);
 
@@ -172,4 +180,19 @@ public class BeatHub : IAsyncDisposable
         if (_hubConnection is not null)
             await _hubConnection.DisposeAsync();
     }
+}
+
+/// <summary>
+/// Reconnect immediately, then retry on a short fixed cadence forever. Unlike SignalR's
+/// default policy this never gives up, so a tunnel client always recovers on its own.
+/// </summary>
+public sealed class FastInfiniteRetryPolicy : IRetryPolicy
+{
+    public TimeSpan? NextRetryDelay(RetryContext retryContext)
+        => retryContext.PreviousRetryCount switch
+        {
+            0 => TimeSpan.Zero,
+            < 5 => TimeSpan.FromSeconds(1),
+            _ => TimeSpan.FromSeconds(2),
+        };
 }
