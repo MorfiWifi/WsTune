@@ -31,7 +31,10 @@ public class TransportHostService(
         var hubLogger = loggerFactory.CreateLogger<BeatHub>();
         
         var hubInbound = new SeverHubInbounds(appSettings, hubOutbounds, cancellationToken);
-        var options = GenerateHubOptions(hubInbound, hubOutbounds, $"{appSettings.SignalREndpoint}?identity={appSettings.Identity}");
+        var options = GenerateHubOptions(
+            hubInbound,
+            hubOutbounds,
+            $"{appSettings.SignalREndpoint}?identity={appSettings.Identity}&peerType=server");
         BeatHub bHub = new BeatHub(options, hubLogger);
 
         hubOutbounds.StartPump(cancellationToken);

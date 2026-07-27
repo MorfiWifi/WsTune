@@ -39,7 +39,10 @@ public class TransportHostService : BackgroundService
         var fws = new Dictionary<string, IFwV4>();
 
         var hubInbound = new ListenerHubInbounds(fws, cancellationToken);
-        var options = GenerateHubOptions(hubInbound, hubOutbounds, $"{_appSettings.SignalREndpoint}?identity={_appSettings.Identity}");
+        var options = GenerateHubOptions(
+            hubInbound,
+            hubOutbounds,
+            $"{_appSettings.SignalREndpoint}?identity={_appSettings.Identity}&peerType=client");
         BeatHub bHub = new BeatHub(options, _logger);
 
         hubOutbounds.StartPump(cancellationToken);
