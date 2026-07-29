@@ -29,5 +29,13 @@ public static class IdentityGenerator
     /// auto-generated one when none is provided.
     /// </summary>
     public static string ResolveServer(string? configured)
-        => string.IsNullOrWhiteSpace(configured) ? NewId("server") : configured.Trim();
+    {
+        var normalized = configured?.Trim();
+        if (normalized is null || normalized.Length == 0)
+        {
+            return NewId("server");
+        }
+
+        return normalized;
+    }
 }

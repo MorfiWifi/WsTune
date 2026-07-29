@@ -59,7 +59,7 @@ public class UdpFwV3 : IFwV3
 
     public async Task SendDataToListener(byte[] data, int length)
     {
-        if (_remoteEndPoint is not null)
+        if (_remoteEndPoint is not null && _listener is not null)
         {
             await _listener.SendAsync(data, length, _remoteEndPoint);
         }
@@ -68,7 +68,9 @@ public class UdpFwV3 : IFwV3
 
     public async Task SendDataToServer(byte[] data, int length)
     {
-        await _server.SendAsync(data, length, _targetEndPoint);
+        var server = _server
+            ?? throw new InvalidOperationException("The UDP server socket is not configured.");
+        await server.SendAsync(data, length, _targetEndPoint);
     }
 
 
@@ -79,6 +81,8 @@ public class UdpFwV3 : IFwV3
         Task listenerTask = Task.CompletedTask;
         if (_onListenerDataReceived != null)
         {
+            var listener = _listener
+                ?? throw new InvalidOperationException("The UDP listener socket is not configured.");
             listenerTask = Task.Run(async () =>
             {
                 while (!cancellationToken.IsCancellationRequested)
@@ -89,7 +93,7 @@ public class UdpFwV3 : IFwV3
 
 
                         // var received = await _listener.ReceiveAsync(cancellationToken);
-                        var received = await _listener.ReceiveAsync();
+                        var received = await listener.ReceiveAsync();
                         // var receiverId = Guid.NewGuid();
                         _remoteEndPoint = received.RemoteEndPoint;
 
@@ -118,6 +122,8 @@ public class UdpFwV3 : IFwV3
         Task serverTask = Task.CompletedTask;
         if (_onServerDataReceived != null)
         {
+            var server = _server
+                ?? throw new InvalidOperationException("The UDP server socket is not configured.");
             serverTask = Task.Run(async () =>
             {
                 while (!cancellationToken.IsCancellationRequested)
@@ -127,7 +133,7 @@ public class UdpFwV3 : IFwV3
                         // if (_server.Available <= 0) continue;
 
                         // var received = await _server.ReceiveAsync(cancellationToken);
-                        var received = await _server.ReceiveAsync();
+                        var received = await server.ReceiveAsync();
 
                         var model = new ForwardModel
                         {
@@ -164,12 +170,16 @@ public class UdpFwV3 : IFwV3
         
         Func<ForwardModel, Task> onListenerDataReceived = async (context) =>
         {
-            await server.SendDataToServer(context.Data, context.Length);
+            var target = server
+                ?? throw new InvalidOperationException("The example UDP server has not been initialized.");
+            await target.SendDataToServer(context.Data, context.Length);
         };
 
         Func<ForwardModel, Task> onServerDataReceived = async (context) =>
         {
-            await listener.SendDataToListener(context.Data, context.Length);
+            var target = listener
+                ?? throw new InvalidOperationException("The example UDP listener has not been initialized.");
+            await target.SendDataToListener(context.Data, context.Length);
         };
 
 

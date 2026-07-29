@@ -5,6 +5,7 @@ using WsTuneCommon.Interfaces;
 namespace WsTuneCommon.Implementation;
 
 public class KeyChannel<TKey, TValue> : IKeyChannel<TKey, TValue>
+    where TKey : notnull
 {
     private ConcurrentDictionary<TKey, Channel<TValue>> _channels = new();
 

@@ -8,11 +8,11 @@ public class AppSettings
     /// </summary>
     public string Identity { get; set; } = string.Empty;
     
-    public string SignalREndpoint { get; set; }
-    public string WebSockifyEndpoint { get; set; }
+    public string SignalREndpoint { get; set; } = string.Empty;
+    public string WebSockifyEndpoint { get; set; } = string.Empty;
     
     //listener configs
-    public List<TunnelConfigDto> Configs { get; set; }
+    public List<TunnelConfigDto> Configs { get; set; } = [];
     
     //server configurations
     public List<TunnelConfigDto> BlackList { get; set; } = [];

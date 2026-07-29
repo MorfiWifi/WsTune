@@ -13,5 +13,5 @@ public class TcpFw4Config
     public int TargetPort { set; get; } = 5900;
     public bool EnableWatchdog { set; get; } = true;
     
-    public string Name {get; set;}
+    public string Name { get; set; } = string.Empty;
 }

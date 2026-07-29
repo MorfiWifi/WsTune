@@ -73,15 +73,17 @@ public class TcpFwV3 : IFwV3
         Task listenerTask = Task.CompletedTask;
         if (_onListenerDataReceived != null)
         {
+            var listener = _listener
+                ?? throw new InvalidOperationException("The TCP listener is not configured.");
             listenerTask = Task.Run(async () =>
             {
-                _listener.Start();
+                listener.Start();
                 while (!cancellationToken.IsCancellationRequested)
                 {
                     try
                     {
                         // _client = await _listener.AcceptTcpClientAsync(cancellationToken);
-                        _client = await _listener.AcceptTcpClientAsync();
+                        _client = await listener.AcceptTcpClientAsync();
                         TunnelBuffers.ConfigureTcpClient(_client);
 
                         if (_onServerDataReceived != null)

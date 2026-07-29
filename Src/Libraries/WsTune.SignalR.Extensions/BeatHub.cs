@@ -22,21 +22,15 @@ public class BeatHub : IAsyncDisposable
 
     public BeatHub(BeatHubOptions options, ILogger logger)
     {
+        ArgumentNullException.ThrowIfNull(options);
+        ArgumentNullException.ThrowIfNull(logger);
+
         _options = options;
-        _inbounds = options.Inbound;
-        _outbounds = options.Outbounds;
+        _inbounds = options.Inbound
+            ?? throw new ArgumentException("Inbound hub handlers must be configured.", nameof(options));
+        _outbounds = options.Outbounds
+            ?? throw new ArgumentException("Outbound hub handlers must be configured.", nameof(options));
         _logger = logger;
-
-        ThrowExceptionOnBadParam();
-    }
-
-    private void ThrowExceptionOnBadParam()
-    {
-        if (_inbounds is null)
-            throw new NullReferenceException(nameof(_inbounds));
-
-        if (_outbounds is null)
-            throw new NullReferenceException(nameof(_outbounds));
     }
 
     public async Task Start(CancellationToken cancellationToken = default)
