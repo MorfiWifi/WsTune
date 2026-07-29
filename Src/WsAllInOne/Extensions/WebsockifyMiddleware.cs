@@ -22,6 +22,32 @@ public sealed class WebsockifyMiddleware
     private readonly RequestDelegate _next;
     private readonly int _bufferSizeInBytes;
 
+    private static async Task<TcpClient> ConnectToForwarderAsync(
+        int port,
+        CancellationToken cancellationToken)
+    {
+        var deadline = DateTime.UtcNow.AddSeconds(2);
+        while (true)
+        {
+            var client = new TcpClient();
+            try
+            {
+                await client
+                    .ConnectAsync("127.0.0.1", port, cancellationToken)
+                    .ConfigureAwait(false);
+                return client;
+            }
+            catch (SocketException)
+            {
+                client.Dispose();
+                if (DateTime.UtcNow >= deadline)
+                    throw;
+
+                await Task.Delay(25, cancellationToken).ConfigureAwait(false);
+            }
+        }
+    }
+
     /// <summary>
     /// Initializes a new instance of the <see cref="WebsockifyMiddleware"/> class.
     /// </summary>
@@ -52,10 +78,23 @@ public sealed class WebsockifyMiddleware
             while (true)
             {
                 read = await networkStream.ReadAsync(buffer, cancellationToken).ConfigureAwait(false);
+                if (read == 0)
+                    break;
+
                 await webSocket.SendAsync(
                     new ArraySegment<byte>(buffer, 0, read),
                     WebSocketMessageType.Binary, true, cancellationToken).ConfigureAwait(false);
             }
+        }
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+        {
+        }
+        catch (IOException exception) when (
+            exception.InnerException is SocketException
+            {
+                SocketErrorCode: SocketError.OperationAborted
+            })
+        {
         }
         catch (Exception thrownException)
         {
@@ -84,6 +123,13 @@ public sealed class WebsockifyMiddleware
                 await networkStream.WriteAsync(buffer, 0, read.Count, cancellationToken).ConfigureAwait(false);
             }
         }
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+        {
+        }
+        catch (WebSocketException) when (
+            webSocket.State is WebSocketState.Aborted or WebSocketState.Closed)
+        {
+        }
         catch (Exception thrownException)
         {
             logger.LogError(thrownException, $"{nameof(SendTask)} method interrupted due to exception.");
@@ -93,10 +139,23 @@ public sealed class WebsockifyMiddleware
         await networkStream.DisposeAsync().ConfigureAwait(false);
         tcpClient.Close();
 
-        await webSocket.CloseAsync(
-            lastRead?.CloseStatus ?? default,
-            lastRead?.CloseStatusDescription ?? string.Empty,
-            cancellationToken).ConfigureAwait(false);
+        if (webSocket.State is WebSocketState.Open or WebSocketState.CloseReceived)
+        {
+            var closeStatus = lastRead?.CloseStatus ?? WebSocketCloseStatus.NormalClosure;
+            try
+            {
+                await webSocket.CloseAsync(
+                    closeStatus,
+                    lastRead?.CloseStatusDescription ?? string.Empty,
+                    cancellationToken).ConfigureAwait(false);
+            }
+            catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+            {
+            }
+            catch (WebSocketException)
+            {
+            }
+        }
     }
 
     /// <summary>
@@ -140,24 +199,44 @@ public sealed class WebsockifyMiddleware
         {
             var webSocket = await context.WebSockets.AcceptWebSocketAsync().ConfigureAwait(false);
 
-            using var tcpClient = new TcpClient();
+            TcpClient tcpClient;
             try
             {
-                await tcpClient.ConnectAsync( "127.0.0.1", config.ListenPort , cancellationToken).ConfigureAwait(false);
+                tcpClient = await ConnectToForwarderAsync(
+                        config.ListenPort,
+                        cancellationToken)
+                    .ConfigureAwait(false);
             }
             catch (Exception ex)
             {
                 logger.LogError(ex, "Failed to connect to target TCP server.");
-                await webSocket
-                    .CloseAsync(WebSocketCloseStatus.InternalServerError, "Connection failed", cancellationToken)
-                    .ConfigureAwait(false);
+                try
+                {
+                    await webSocket
+                        .CloseAsync(
+                            WebSocketCloseStatus.InternalServerError,
+                            "Connection failed",
+                            cancellationToken)
+                        .ConfigureAwait(false);
+                }
+                catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+                {
+                    // The request ended before the failure close frame could be sent.
+                }
+                catch (WebSocketException)
+                {
+                    // The peer disconnected while the connection failure was reported.
+                }
                 return;
             }
 
-            var networkStream = tcpClient.GetStream();
-            var receiveTask = ReceiveTask(networkStream, webSocket, _bufferSizeInBytes, logger, cancellationToken);
-            var sendTask = SendTask(webSocket, networkStream, tcpClient, _bufferSizeInBytes, logger, cancellationToken);
-            await Task.WhenAll(receiveTask, sendTask).ConfigureAwait(false);
+            using (tcpClient)
+            {
+                var networkStream = tcpClient.GetStream();
+                var receiveTask = ReceiveTask(networkStream, webSocket, _bufferSizeInBytes, logger, cancellationToken);
+                var sendTask = SendTask(webSocket, networkStream, tcpClient, _bufferSizeInBytes, logger, cancellationToken);
+                await Task.WhenAll(receiveTask, sendTask).ConfigureAwait(false);
+            }
         }
         else
         {

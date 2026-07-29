@@ -1,7 +1,4 @@
-﻿using System.Diagnostics.CodeAnalysis;
-using Microsoft.Extensions.DependencyInjection;
-using WsTune.SignalR.Extensions;
-using WsTuneCommon;
+﻿using WsTune.SignalR.Extensions;
 using WsTuneCli.Listener.Transport;
 using WsTuneCommon.Models;
 
@@ -47,11 +44,7 @@ public class InternalHubService : BackgroundService
             Outbounds = udpHubOutbounds,
             Delay = 60_000,
             Url = singlarEndpoint,
-            HeartBitFunctionName = "Ping",
-
-            CustomConfigurationsFunc = connectionBuilder =>
-                connectionBuilder.AddMessagePackProtocol(options =>
-                    options.SerializerOptions = TunnelMessagePackOptions.SignalR)
+            HeartBitFunctionName = "Ping"
         };
     }
 }

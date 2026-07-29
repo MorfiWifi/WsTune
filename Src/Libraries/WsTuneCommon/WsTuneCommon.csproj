@@ -1,28 +1,26 @@
 <!--
-  TreatAsLocalProperty lets this project override the publish-related GLOBAL properties the WebApi's
-  Docker build passes on the command line (-p:PublishTrimmed=true etc.). This library is a single
-  small netstandard2.0 assembly (shared by the .NET 10 ends and the net48 WsAllInOne.Std client) and
-  must NOT be trimmed/single-filed: netstandard2.0 can't be trimmed (NETSDK1124), and MessagePack
-  DTOs here are reflection-accessed so trimming them would be unsafe anyway.
+  This netstandard2.0 library is shared by the .NET 10 endpoints and the net48 client.
+  TreatAsLocalProperty keeps executable publish and platform globals from changing how the
+  shared library itself is built.
 -->
-<Project Sdk="Microsoft.NET.Sdk" TreatAsLocalProperty="PublishTrimmed;PublishSingleFile;EnableCompressionInSingleFile">
+<Project Sdk="Microsoft.NET.Sdk" TreatAsLocalProperty="PlatformTarget;PublishAot;PublishTrimmed;PublishSingleFile;EnableCompressionInSingleFile">
 
     <PropertyGroup>
         <LangVersion>latest</LangVersion>
         <ImplicitUsings>enable</ImplicitUsings>
         <Nullable>enable</Nullable>
         <TargetFramework>netstandard2.0</TargetFramework>
+        <PlatformTarget>AnyCPU</PlatformTarget>
 
-        <!-- Never trim/single-file this package, even when a consumer publishes with those globals. -->
+        <!-- The executable's linker processes this assembly during the final publish. -->
+        <PublishAot>false</PublishAot>
         <PublishTrimmed>false</PublishTrimmed>
         <PublishSingleFile>false</PublishSingleFile>
         <EnableCompressionInSingleFile>false</EnableCompressionInSingleFile>
-        <IsTrimmable>false</IsTrimmable>
     </PropertyGroup>
 
     <ItemGroup>
-      <PackageReference Include="MessagePack" Version="3.1.8" />
-      <PackageReference Include="MessagePack.Annotations" Version="3.1.8" />
+      <PackageReference Include="Microsoft.Bcl.AsyncInterfaces" Version="10.0.0" />
       <PackageReference Include="System.Buffers" Version="4.6.1" />
       <PackageReference Include="System.Memory" Version="4.6.3" />
       <PackageReference Include="System.Net.WebSockets" Version="4.3.0" />

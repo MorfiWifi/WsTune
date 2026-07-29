@@ -76,10 +76,11 @@ public class TransportHostService : BackgroundService
             Delay = 60_000,
             Url = singlarEndpoint,
             HeartBitFunctionName = "Ping",
-
             CustomConfigurationsFunc = connectionBuilder =>
-                connectionBuilder.AddMessagePackProtocol(options =>
-                    options.SerializerOptions = TunnelMessagePackOptions.SignalR)
+                connectionBuilder.AddJsonProtocol(options =>
+                    options.PayloadSerializerOptions.TypeInfoResolverChain.Insert(
+                        0,
+                        WsAllInOneJsonContext.Default))
         };
     }
 }

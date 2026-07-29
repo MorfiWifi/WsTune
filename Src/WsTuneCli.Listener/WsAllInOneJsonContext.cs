@@ -3,7 +3,7 @@ using WsTuneCommon.Models;
 
 namespace WsTuneCommon;
 
-[JsonSourceGenerationOptions(WriteIndented = true)]
+[JsonSourceGenerationOptions(WriteIndented = false)]
 [JsonSerializable(typeof(ForwardModelV4))]
 [JsonSerializable(typeof(ForwardModel))]
 [JsonSerializable(typeof(byte[]))]

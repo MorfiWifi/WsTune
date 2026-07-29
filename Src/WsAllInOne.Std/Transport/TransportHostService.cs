@@ -1,6 +1,4 @@
-﻿using MessagePack;
-using Microsoft.AspNetCore.SignalR.Client;
-using Microsoft.Extensions.DependencyInjection;
+﻿using Microsoft.AspNetCore.SignalR.Client;
 using WsTuneCli.Listener.Extensions;
 using WsTuneCommon;
 using WsTuneCommon.Implementation;
@@ -33,10 +31,6 @@ public class TransportHostService /*: IHostedService*/
         var connection = new HubConnectionBuilder()
             .WithUrl( $"{_appSettings.SignalREndpoint}?identity={_appSettings.Identity}")
             .WithAutomaticReconnect()
-            .AddMessagePackProtocol(op => 
-                op.SerializerOptions = MessagePackSerializerOptions.Standard
-                //.WithCompression(MessagePackCompression.Lz4BlockArray)
-            )
             .Build();
 
         hubInbound.Register(connection);

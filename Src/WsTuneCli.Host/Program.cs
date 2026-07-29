@@ -1,5 +1,4 @@
-﻿using MessagePack;
-using WsTuneCommon;
+﻿using WsTuneCommon;
 using WsTuneCommon.Models;
 
 
@@ -43,9 +42,10 @@ public class Program
                 options.ClientTimeoutInterval = TimeSpan.FromSeconds(60); // Client timeout increased to 60 seconds
                 options.MaximumParallelInvocationsPerClient = 64;
             })
-            .AddMessagePackProtocol(options =>
-                options.SerializerOptions = TunnelMessagePackOptions.SignalR)
-            ;
+            .AddJsonProtocol(options =>
+                options.PayloadSerializerOptions.TypeInfoResolverChain.Insert(
+                    0,
+                    WsAllInOneJsonContext.Default));
 
         builder.Services.ConfigureHttpJsonOptions(options =>
         {
