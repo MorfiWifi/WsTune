@@ -57,19 +57,17 @@ jobs:
             @{ Name = 'wstun-server'; Path = 'Src/WsTuneCli.Server/WsTuneCli.Server.csproj' },
             @{ Name = 'wstun-client'; Path = 'Src/WsTuneCli.Listener/WsTuneCli.Listener.csproj' }
           )
-          $rids = @('win-x86', 'win-x64', 'linux-x64', 'linux-arm64', 'linux-bionic-arm64')
+          $rids = @('win-x86', 'win-x64', 'linux-x64', 'linux-arm64')
+          $bionicRid = 'linux-bionic-arm64'
 
           foreach ($proj in $projects) {
             foreach ($rid in $rids) {
               Write-Host "::group::Publish $($proj.Name) ($rid)"
               $pubDir = Join-Path $out "$($proj.Name)-$rid"
-              # linux-bionic-arm64 (Termux/Android) ships untrimmed: ILLink crashes on the
-              # bionic runtime pack (NETSDK1144), verified locally with .NET 10 SDK.
-              $trimmed = $rid -ne 'linux-bionic-arm64'
               dotnet publish $proj.Path `
                 -c Release -r $rid -f net10.0 --self-contained `
                 -p:PublishSingleFile=true `
-                -p:PublishTrimmed=$trimmed `
+                -p:PublishTrimmed=true `
                 -p:EnableCompressionInSingleFile=true `
                 -p:Version=$env:VERSION -p:AssemblyVersion=$env:VERSION -p:FileVersion=$env:VERSION `
                 -o $pubDir
@@ -77,6 +75,28 @@ jobs:
               Compress-Archive -Path "$pubDir/*" -DestinationPath (Join-Path $out "$($proj.Name)-$rid-v$($env:VERSION).zip") -Force
               Write-Host "::endgroup::"
             }
+          }
+
+          # --- linux-bionic-arm64 (Termux/Android): separate build, own flags ---
+          # Bionic is Android's libc, not glibc: the single-file bundle extractor is
+          # fragile under Android SELinux and ILLink crashes on the bionic runtime
+          # pack (NETSDK1144, verified locally with .NET 10 SDK). So this ships as
+          # loose self-contained files, untrimmed, instead of a single-file bundle.
+          # PublishAot is forced off: AOT neutralizes self-contained (the output then
+          # needs a runtime at launch instead of carrying its own).
+          foreach ($proj in $projects) {
+            Write-Host "::group::Publish $($proj.Name) ($bionicRid)"
+            $pubDir = Join-Path $out "$($proj.Name)-$bionicRid"
+            dotnet publish $proj.Path `
+              -c Release -r $bionicRid -f net10.0 --self-contained `
+              -p:PublishSingleFile=false `
+              -p:PublishTrimmed=false `
+              -p:PublishAot=false `
+              -p:Version=$env:VERSION -p:AssemblyVersion=$env:VERSION -p:FileVersion=$env:VERSION `
+              -o $pubDir
+            if ($LASTEXITCODE -ne 0) { throw "publish failed: $($proj.Name) / $bionicRid" }
+            Compress-Archive -Path "$pubDir/*" -DestinationPath (Join-Path $out "$($proj.Name)-$bionicRid-v$($env:VERSION).zip") -Force
+            Write-Host "::endgroup::"
           }
 
           # --- net48 Std component (Windows-only, framework-dependent x86) ---
@@ -91,15 +111,16 @@ jobs:
           Write-Host "::endgroup::"
 
           # --- Build manifest (parity with build-wstun-release.ps1) ---
+          $allRids = $rids + @($bionicRid)
           [ordered]@{
             version   = $env:VERSION
             semVer2   = $env:SEMVER
             buildDate = (Get-Date).ToUniversalTime().ToString('yyyy-MM-dd HH:mm:ss') + ' UTC'
             commit    = $env:GITHUB_SHA
-            runtimes  = $rids
+            runtimes  = $allRids
             components = @(
-              @{ name = 'wstun-server'; framework = 'net10.0'; rids = $rids },
-              @{ name = 'wstun-client'; framework = 'net10.0'; rids = $rids },
+              @{ name = 'wstun-server'; framework = 'net10.0'; rids = $allRids },
+              @{ name = 'wstun-client'; framework = 'net10.0'; rids = $allRids },
               @{ name = 'wstun-std';    framework = 'net48';   rids = @('win-x86') }
             )
           } | ConvertTo-Json -Depth 5 | Out-File (Join-Path $out 'build-info.json') -Encoding utf8
@@ -118,11 +139,11 @@ jobs:
             Automated release built from `${{ github.sha }}`.
 
             **Components**
-            - `wstun-server` / `wstun-client` — self-contained single-file .NET 10 (`win-x86`, `win-x64`, `linux-x64`, `linux-arm64`, `linux-bionic-arm64` for Termux/Android).
+            - `wstun-server` / `wstun-client` — self-contained single-file .NET 10 (`win-x86`, `win-x64`, `linux-x64`, `linux-arm64`).
+            - `wstun-server` / `wstun-client` (`linux-bionic-arm64`, for Termux/Android) — self-contained **loose files**, untrimmed (not single-file).
             - `wstun-std` — .NET Framework 4.8 (Windows x86, requires .NET Framework on the target).
 
-            > Note: `linux-*` binaries are delivered as `.zip`, which does not preserve the Unix executable bit — run `chmod +x wstun-*` after extracting.
-            > Note: the `linux-bionic-arm64` build is untrimmed (larger) because the .NET trimmer currently crashes on the bionic runtime pack.
+            > Note: `linux-*` binaries are delivered as `.zip`, which does not preserve the Unix executable bit — run `chmod +x wstun-*` (single-file) or `chmod -R +x <extracted-dir>` (bionic loose files) after extracting.
           files: |
             artifacts/*.zip
             artifacts/build-info.json
