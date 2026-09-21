@@ -57,16 +57,19 @@ jobs:
             @{ Name = 'wstun-server'; Path = 'Src/WsTuneCli.Server/WsTuneCli.Server.csproj' },
             @{ Name = 'wstun-client'; Path = 'Src/WsTuneCli.Listener/WsTuneCli.Listener.csproj' }
           )
-          $rids = @('win-x86', 'win-x64', 'linux-x64', 'linux-arm64')
+          $rids = @('win-x86', 'win-x64', 'linux-x64', 'linux-arm64', 'linux-bionic-arm64')
 
           foreach ($proj in $projects) {
             foreach ($rid in $rids) {
               Write-Host "::group::Publish $($proj.Name) ($rid)"
               $pubDir = Join-Path $out "$($proj.Name)-$rid"
+              # linux-bionic-arm64 (Termux/Android) ships untrimmed: ILLink crashes on the
+              # bionic runtime pack (NETSDK1144), verified locally with .NET 10 SDK.
+              $trimmed = $rid -ne 'linux-bionic-arm64'
               dotnet publish $proj.Path `
                 -c Release -r $rid -f net10.0 --self-contained `
                 -p:PublishSingleFile=true `
-                -p:PublishTrimmed=true `
+                -p:PublishTrimmed=$trimmed `
                 -p:EnableCompressionInSingleFile=true `
                 -p:Version=$env:VERSION -p:AssemblyVersion=$env:VERSION -p:FileVersion=$env:VERSION `
                 -o $pubDir
@@ -115,10 +118,11 @@ jobs:
             Automated release built from `${{ github.sha }}`.
 
             **Components**
-            - `wstun-server` / `wstun-client` — self-contained single-file .NET 10 (`win-x86`, `win-x64`, `linux-x64`, `linux-arm64`).
+            - `wstun-server` / `wstun-client` — self-contained single-file .NET 10 (`win-x86`, `win-x64`, `linux-x64`, `linux-arm64`, `linux-bionic-arm64` for Termux/Android).
             - `wstun-std` — .NET Framework 4.8 (Windows x86, requires .NET Framework on the target).
 
-            > Note: `linux-x64` / `linux-arm64` binaries are delivered as `.zip`, which does not preserve the Unix executable bit — run `chmod +x wstun-*` after extracting.
+            > Note: `linux-*` binaries are delivered as `.zip`, which does not preserve the Unix executable bit — run `chmod +x wstun-*` after extracting.
+            > Note: the `linux-bionic-arm64` build is untrimmed (larger) because the .NET trimmer currently crashes on the bionic runtime pack.
           files: |
             artifacts/*.zip
             artifacts/build-info.json
