@@ -57,7 +57,7 @@ jobs:
             @{ Name = 'wstun-server'; Path = 'Src/WsTuneCli.Server/WsTuneCli.Server.csproj' },
             @{ Name = 'wstun-client'; Path = 'Src/WsTuneCli.Listener/WsTuneCli.Listener.csproj' }
           )
-          $rids = @('win-x86', 'win-x64', 'linux-x64')
+          $rids = @('win-x86', 'win-x64', 'linux-x64', 'linux-arm64')
 
           foreach ($proj in $projects) {
             foreach ($rid in $rids) {
@@ -115,10 +115,10 @@ jobs:
             Automated release built from `${{ github.sha }}`.
 
             **Components**
-            - `wstun-server` / `wstun-client` — self-contained single-file .NET 10 (`win-x86`, `win-x64`, `linux-x64`).
+            - `wstun-server` / `wstun-client` — self-contained single-file .NET 10 (`win-x86`, `win-x64`, `linux-x64`, `linux-arm64`).
             - `wstun-std` — .NET Framework 4.8 (Windows x86, requires .NET Framework on the target).
 
-            > Note: `linux-x64` binaries are delivered as `.zip`, which does not preserve the Unix executable bit — run `chmod +x wstun-*` after extracting.
+            > Note: `linux-x64` / `linux-arm64` binaries are delivered as `.zip`, which does not preserve the Unix executable bit — run `chmod +x wstun-*` after extracting.
           files: |
             artifacts/*.zip
             artifacts/build-info.json
