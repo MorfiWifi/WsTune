@@ -24,6 +24,7 @@
          untrimmed): keep trimming/AOT off so the APK just works. -->
     <PublishTrimmed>false</PublishTrimmed>
     <PublishAot>false</PublishAot>
+    <RunAOTCompilation>false</RunAOTCompilation>
     <AndroidEnableProguard>false</AndroidEnableProguard>
     <AndroidLinkMode>None</AndroidLinkMode>
     <EnableCompressionInSingleFile>false</EnableCompressionInSingleFile>
