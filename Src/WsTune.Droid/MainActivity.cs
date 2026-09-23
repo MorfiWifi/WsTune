@@ -129,7 +129,7 @@ public sealed class MainActivity : Activity
         toolbar.SetPadding(Dp(16), Dp(8), Dp(16), Dp(8));
         toolbar.Title = GetString(Resource.String.app_name);
         toolbar.SetTitleTextColor(ColorRes(Resource.Color.colorOnSurface));
-        toolbar.SetSubtitle(GetString(Resource.String.toolbar_subtitle));
+        toolbar.SetSubtitle(Resource.String.toolbar_subtitle);
         toolbar.SetSubtitleTextColor(ColorRes(Resource.Color.colorOnSurfaceVariant));
         toolbar.Logo = GetDrawable(Resource.Drawable.ic_launcher_foreground);
         toolbar.LogoDescription = GetString(Resource.String.app_name);
@@ -285,8 +285,8 @@ public sealed class MainActivity : Activity
             var empty = new LinearLayout(this)
             {
                 Orientation = Orientation.Vertical,
-                Gravity = GravityFlags.CenterHorizontal,
             };
+            empty.SetGravity(GravityFlags.CenterHorizontal);
             empty.SetPadding(Dp(16), Dp(24), Dp(16), Dp(8));
 
             var icon = new ImageView(this)
@@ -302,8 +302,8 @@ public sealed class MainActivity : Activity
             {
                 Text = GetString(Resource.String.empty_tunnels_title),
                 TextSize = 15,
-                Gravity = GravityFlags.Center,
             };
+            title.SetGravity(GravityFlags.Center);
             title.SetTextColor(ColorRes(Resource.Color.colorOnSurface));
             title.SetTypeface(null, Android.Graphics.TypefaceStyle.Bold);
             title.SetPadding(0, Dp(8), 0, 0);
@@ -313,8 +313,8 @@ public sealed class MainActivity : Activity
             {
                 Text = GetString(Resource.String.empty_tunnels_body),
                 TextSize = 13,
-                Gravity = GravityFlags.Center,
             };
+            body.SetGravity(GravityFlags.Center);
             body.SetTextColor(ColorRes(Resource.Color.colorOnSurfaceVariant));
             empty.AddView(body);
 
@@ -497,9 +497,9 @@ public sealed class MainActivity : Activity
         var bar = new LinearLayout(this)
         {
             Orientation = Orientation.Horizontal,
-            Gravity = GravityFlags.CenterVertical,
             LayoutParameters = new LinearLayout.LayoutParams(-1, ViewGroup.LayoutParams.WrapContent),
         };
+        bar.SetGravity(GravityFlags.CenterVertical);
         bar.SetPadding(Dp(16), Dp(12), Dp(16), Dp(16));
         bar.SetBackgroundColor(ColorRes(Resource.Color.colorSurface));
         bar.Elevation = Dp(8);
@@ -534,9 +534,9 @@ public sealed class MainActivity : Activity
         var actions = new LinearLayout(this)
         {
             Orientation = Orientation.Horizontal,
-            Gravity = GravityFlags.End,
             LayoutParameters = new LinearLayout.LayoutParams(-1, ViewGroup.LayoutParams.WrapContent),
         };
+        actions.SetGravity(GravityFlags.End);
         var clearBtn = new MaterialButton(this, null, Resource.Style.Widget_Material3_Button_TextButton)
         {
             Text = GetString(Resource.String.btn_clear_log),
@@ -581,7 +581,7 @@ public sealed class MainActivity : Activity
             Radius = Dp(16),
             StrokeWidth = Dp(0),
             CardElevation = Dp(1),
-            CardBackgroundColor = ColorRes(Resource.Color.colorSurface),
+            CardBackgroundColor = Android.Content.Res.ColorStateList.ValueOf(ColorRes(Resource.Color.colorSurface)),
         };
         card.SetContentPadding(Dp(16), Dp(12), Dp(16), Dp(16));
 
@@ -643,7 +643,7 @@ public sealed class MainActivity : Activity
             },
             Hint = hint,
         };
-        var edit = new TextInputEditText(til.Context)
+        var edit = new TextInputEditText(this)
         {
             LayoutParameters = new ViewGroup.LayoutParams(-1, ViewGroup.LayoutParams.WrapContent),
             InputType = inputTypes,
