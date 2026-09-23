@@ -157,7 +157,7 @@ public sealed class MainActivity : AppCompatActivity
 
     private View BuildConnectionCard()
     {
-        var content = NewCard(Resource.String.card_connection);
+        var card = NewCard(Resource.String.card_connection, out var content);
 
         var urlTil = OutlinedField("Host SignalR URL", InputTypes.ClassText | InputTypes.TextVariationUri);
         urlTil.EndIconMode = TextInputLayout.EndIconClearText;
@@ -222,7 +222,7 @@ public sealed class MainActivity : AppCompatActivity
         ApplyIdentityLockState();
         content.AddView(identityTil);
 
-        return content;
+        return card;
     }
 
     private void ApplyIdentityLockState()
@@ -250,7 +250,7 @@ public sealed class MainActivity : AppCompatActivity
 
     private View BuildTunnelsCard()
     {
-        var content = NewCard(Resource.String.card_tunnels);
+        var card = NewCard(Resource.String.card_tunnels, out var content);
 
         var hint = new TextView(this)
         {
@@ -288,7 +288,7 @@ public sealed class MainActivity : AppCompatActivity
         };
         content.AddView(addBtn);
 
-        return content;
+        return card;
     }
 
     /// <summary>Rebuild tunnel editors from the model (add/remove only — typing edits the model in place).</summary>
@@ -358,7 +358,7 @@ public sealed class MainActivity : AppCompatActivity
         card.SetContentPadding(Dp(16), Dp(8), Dp(16), Dp(16));
 
         var box = new LinearLayout(this) { Orientation = Orientation.Vertical };
-        card.AddView(box, new ViewGroup.LayoutParams(-1, ViewGroup.LayoutParams.WrapContent));
+        card.AddView(box, new FrameLayout.LayoutParams(-1, ViewGroup.LayoutParams.WrapContent));
 
         // header: name preview + remove
         var head = new LinearLayout(this) { Orientation = Orientation.Horizontal };
@@ -546,7 +546,7 @@ public sealed class MainActivity : AppCompatActivity
 
     private View BuildLogCard()
     {
-        var card = NewCard(Resource.String.card_log);
+        var card = NewCard(Resource.String.card_log, out var content);
 
         var actions = new LinearLayout(this)
         {
@@ -570,7 +570,7 @@ public sealed class MainActivity : AppCompatActivity
             if (_logText is not null) _logText.Text = string.Empty;
         };
         actions.AddView(clearBtn);
-        card.AddView(actions);
+        content.AddView(actions);
 
         _logText = new TextView(this)
         {
@@ -585,7 +585,7 @@ public sealed class MainActivity : AppCompatActivity
             LayoutParameters = new LinearLayout.LayoutParams(-1, Dp(200)),
         };
         _logScroll.AddView(_logText);
-        card.AddView(_logScroll);
+        content.AddView(_logScroll);
         return card;
     }
 
@@ -593,9 +593,9 @@ public sealed class MainActivity : AppCompatActivity
 
     /// <summary>
     /// MaterialCardView with a vertical content column (title + room for children).
-    /// Returns the column so AddView stacks under the title (cards are FrameLayouts).
+    /// Returns the card and exposes its content column through <paramref name="content"/>.
     /// </summary>
-    private LinearLayout NewCard(int titleRes)
+    private MaterialCardView NewCard(int titleRes, out LinearLayout content)
     {
         var card = new MaterialCardView(this)
         {
@@ -607,20 +607,20 @@ public sealed class MainActivity : AppCompatActivity
         };
         card.SetContentPadding(Dp(16), Dp(12), Dp(16), Dp(16));
 
-        var column = new LinearLayout(this)
+        content = new LinearLayout(this)
         {
             Orientation = Orientation.Vertical,
-            LayoutParameters = new ViewGroup.LayoutParams(-1, ViewGroup.LayoutParams.WrapContent),
+            LayoutParameters = new FrameLayout.LayoutParams(-1, ViewGroup.LayoutParams.WrapContent),
         };
-        card.AddView(column);
+        card.AddView(content);
 
         var head = new TextView(this) { Text = GetString(titleRes), TextSize = 17 };
         head.SetTextColor(ColorRes(Resource.Color.colorOnSurface));
         head.SetTypeface(null, Android.Graphics.TypefaceStyle.Bold);
         head.SetPadding(0, 0, 0, Dp(4));
-        column.AddView(head);
+        content.AddView(head);
 
-        return column;
+        return card;
     }
 
     private TextView FieldLabel(string text)
