@@ -44,10 +44,11 @@ jobs:
         id: ver
         shell: bash
         run: |
-          dotnet tool install --global nbgv
-          echo "$HOME/.dotnet/tools" >> "$GITHUB_PATH"
+          dotnet tool install --global nbgv || true
           export PATH="$HOME/.dotnet/tools:$PATH"
-          V=$(nbgv get-version --field SimpleVersion)
+          # Same proven pattern as release.yml: JSON output, then pick the field.
+          # (nbgv 3.x has no --field flag, so parse stdout with python3.)
+          V=$(nbgv get-version -f json | python3 -c "import json,sys; print(json.load(sys.stdin)['SimpleVersion'])")
           echo "Resolved version: $V"
           echo "version=$V" >> "$GITHUB_OUTPUT"
 
