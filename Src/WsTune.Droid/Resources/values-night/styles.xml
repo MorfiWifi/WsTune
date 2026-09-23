@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8" ?>
 <resources>
-  <!-- Material 3 DayNight. API 26-30 cold-start splash via windowBackground;
-       API 31+ uses platform SplashScreen (values-v31). -->
+  <!-- Dark variant of MainTheme (DayNight picks colors via values-night, but
+       status/nav-bar light-icon flags must flip). -->
   <style name="MainTheme" parent="Theme.Material3.DayNight.NoActionBar">
     <item name="colorPrimary">@color/colorPrimary</item>
     <item name="colorOnPrimary">@color/colorOnPrimary</item>
@@ -23,9 +23,9 @@
     <item name="android:colorAccent">@color/colorAccent</item>
     <item name="android:windowBackground">@drawable/splash_screen</item>
     <item name="android:statusBarColor">@color/colorSurface</item>
-    <item name="android:windowLightStatusBar">true</item>
+    <item name="android:windowLightStatusBar">false</item>
     <item name="android:navigationBarColor">@color/colorSurface</item>
-    <item name="android:windowLightNavigationBar">true</item>
+    <item name="android:windowLightNavigationBar">false</item>
     <item name="android:windowActionModeOverlay">true</item>
   </style>
 </resources>

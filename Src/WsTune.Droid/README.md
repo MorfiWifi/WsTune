@@ -14,15 +14,35 @@ single-screen app + foreground service so the tunnel survives in the background.
 
 ## Configure (in the app)
 
-1. **Host SignalR URL** — full URL of your Host endpoint, e.g.
-   `https://your-host/sample-endpoint`.
-2. **Identity** — this device name (a unique suffix is added automatically, same as desktop).
-3. **Tunnels** — JSON array, same shape as `appsettings.listener.json`:
-   `Name`, `Protocol` (`TCP`), `ListenPort` (1024–65535, Android blocks < 1024),
-   `TargetHost`, `TargetPort`, `Destination` (the Server identity).
+Card-based Material Design 3 UI (top app bar, outlined fields, snackbars,
+dark mode) — no raw JSON editing — everything is persisted to
+`SharedPreferences` (`AppState.cs`) and survives restarts:
 
-Press **Start listener**, then connect your VNC/RDP client to `127.0.0.1:<ListenPort>`
+1. **Connection card**
+   - **Host SignalR URL** — full URL of your Host endpoint, e.g.
+     `https://your-host/sample-endpoint` (outlined field with clear icon).
+   - **Profiles** — exposed-dropdown of saved base addresses; save/delete
+     via icon buttons (`MaterialAlertDialog` for names).
+   - **Identity** — this device name; editable **only until the first Start**,
+     then locked for the installation (helper text + lock end icon).
+2. **Tunnels card** — nested Material cards per tunnel: **Name**, **Destination**,
+   **Listen port** (1024–65535, Android blocks < 1024), **Target host**,
+   **Target port**, **Protocol** (TCP/UDP choice chips). Add with **Add tunnel**;
+   remove with a delete icon — snackbar offers **Undo**.
+3. **Sticky bottom bar** — status chip + filled **Start/Stop** button (error tint
+   while running).
+4. **Log card** — rolling tunnel log with **Clear** (also mirrored to logcat
+   tag `WsTune`).
+
+Press **Start**, then connect your VNC/RDP client to `127.0.0.1:<ListenPort>`
 on the phone (or use it as the entry point defined by your setup).
+
+Theme is `Theme.Material3.DayNight` (follows system light/dark), with an
+adaptive launcher **icon** and a brand **splash screen**
+(`windowBackground` on API 26–30, platform SplashScreen API on 31+).
+UI pieces: `MaterialToolbar`, `TextInputLayout` (floating labels),
+`MaterialCardView`, `MaterialButton`, `Chip`/`ChipGroup`, `Snackbar`,
+`MaterialAlertDialogBuilder` via `Xamarin.Google.Android.Material`.
 
 ## Build locally
 
@@ -49,8 +69,10 @@ adb install -r <path-to>-Signed.apk
 ## CI
 
 `.github/workflows/android-apk.yml` builds the APK on every push / PR and uploads it
-as an artifact (`wstune-listener-apk`). On `v*` tags / releases it also attaches the
-APK to the GitHub Release.
+as an artifact (`wstune-listener-apk`). On **push** events (main / `v*` tags) it also
+**attaches the APK files to the GitHub Release** for the resolved nbgv version
+(`v<version>`), so downloads live in the repo's Releases section next to the
+desktop bundles from `release.yml`.
 
 ## Notes / limits
 
