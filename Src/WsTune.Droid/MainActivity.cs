@@ -5,13 +5,13 @@ using Android.OS;
 using Android.Text;
 using Android.Views;
 using Android.Widget;
-using Com.Google.Android.Material.Appbar;
-using Com.Google.Android.Material.Button;
-using Com.Google.Android.Material.Card;
-using Com.Google.Android.Material.Chip;
-using Com.Google.Android.Material.Dialog;
-using Com.Google.Android.Material.Snackbar;
-using Com.Google.Android.Material.TextField;
+using Google.Android.Material.AppBar;
+using Google.Android.Material.Button;
+using Google.Android.Material.Card;
+using Google.Android.Material.Chip;
+using Google.Android.Material.Dialog;
+using Google.Android.Material.Snackbar;
+using Google.Android.Material.TextField;
 
 namespace WsTune.Droid;
 
@@ -129,7 +129,7 @@ public sealed class MainActivity : Activity
         toolbar.SetPadding(Dp(16), Dp(8), Dp(16), Dp(8));
         toolbar.Title = GetString(Resource.String.app_name);
         toolbar.SetTitleTextColor(ColorRes(Resource.Color.colorOnSurface));
-        toolbar.SetSubtitle(Resource.String.toolbar_subtitle);
+        toolbar.SetSubtitle(GetString(Resource.String.toolbar_subtitle));
         toolbar.SetSubtitleTextColor(ColorRes(Resource.Color.colorOnSurfaceVariant));
         toolbar.Logo = GetDrawable(Resource.Drawable.ic_launcher_foreground);
         toolbar.LogoDescription = GetString(Resource.String.app_name);
@@ -143,7 +143,7 @@ public sealed class MainActivity : Activity
         var content = NewCard(Resource.String.card_connection);
 
         var urlTil = OutlinedField("Host SignalR URL", InputTypes.ClassText | InputTypes.TextVariationUri);
-        urlTil.EndIconMode = TextInputLayout.EndIconModeClearText;
+        urlTil.EndIconMode = TextInputLayout.EndIconClearText;
         _urlEdit = (TextInputEditText)urlTil.EditText!;
         _urlEdit.Text = _state.SignalR;
         _urlEdit.TextChanged += (_, _) => { _state.SignalR = _urlEdit.Text?.Trim() ?? ""; SaveState(); };
@@ -162,10 +162,10 @@ public sealed class MainActivity : Activity
         {
             LayoutParameters = new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WrapContent, 1f),
             Hint = GetString(Resource.String.hint_profile),
-            EndIconMode = TextInputLayout.EndIconModeCustom,
+            EndIconMode = TextInputLayout.EndIconCustom,
         };
         profileTil.SetEndIconDrawable(Resource.Drawable.ic_tunnel);
-        profileTil.SetEndIconContentDescription(Resource.String.hint_profile);
+        profileTil.EndIconContentDescription = GetString(Resource.String.hint_profile);
 
         _profileDropdown = new MaterialAutoCompleteTextView(this)
         {
@@ -219,13 +219,13 @@ public sealed class MainActivity : Activity
             : Resource.String.helper_identity_open);
         if (locked)
         {
-            _identityTil.EndIconMode = TextInputLayout.EndIconModeCustom;
+            _identityTil.EndIconMode = TextInputLayout.EndIconCustom;
             _identityTil.SetEndIconDrawable(Resource.Drawable.ic_lock);
-            _identityTil.SetEndIconContentDescription(Resource.String.helper_identity_locked);
+            _identityTil.EndIconContentDescription = GetString(Resource.String.helper_identity_locked);
         }
         else
         {
-            _identityTil.EndIconMode = TextInputLayout.EndIconModeNone;
+            _identityTil.EndIconMode = TextInputLayout.EndIconNone;
         }
     }
 
@@ -252,7 +252,7 @@ public sealed class MainActivity : Activity
             Text = GetString(Resource.String.btn_add_tunnel),
             LayoutParameters = new LinearLayout.LayoutParams(-1, ViewGroup.LayoutParams.WrapContent) { TopMargin = Dp(12) },
         };
-        addBtn.SetIcon(Resource.Drawable.ic_add);
+        addBtn.SetIconResource(Resource.Drawable.ic_add);
         addBtn.IconGravity = MaterialButton.IconGravityTextStart;
         addBtn.IconPadding = Dp(8);
         addBtn.Click += (_, _) =>
@@ -611,7 +611,7 @@ public sealed class MainActivity : Activity
 
     private Chip ProtocolChip(string protocol)
     {
-        return new Chip(this, null, Resource.Style.Widget_Material3_Chip_Choice)
+        return new Chip(this, null, Resource.Style.Widget_Material3_Chip_Filter)
         {
             Text = protocol,
             Checkable = true,
@@ -625,7 +625,7 @@ public sealed class MainActivity : Activity
             LayoutParameters = new LinearLayout.LayoutParams(Dp(48), Dp(48)) { LeftMargin = Dp(4) },
             ContentDescription = GetString(contentDesc),
         };
-        b.SetIcon(icon);
+        b.SetIconResource(icon);
         b.InsetTop = 0;
         b.InsetBottom = 0;
         b.IconSize = Dp(24);
@@ -850,7 +850,7 @@ public sealed class MainActivity : Activity
             if (_toggleButton is not null)
             {
                 _toggleButton.Text = GetString(running ? Resource.String.btn_stop : Resource.String.btn_start);
-                _toggleButton.SetIcon(running ? Resource.Drawable.ic_stop : Resource.Drawable.ic_play);
+                _toggleButton.SetIconResource(running ? Resource.Drawable.ic_stop : Resource.Drawable.ic_play);
                 _toggleButton.IconGravity = MaterialButton.IconGravityTextStart;
                 _toggleButton.IconPadding = Dp(8);
                 _toggleButton.BackgroundTintList = Android.Content.Res.ColorStateList.ValueOf(
