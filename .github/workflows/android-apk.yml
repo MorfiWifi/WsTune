@@ -54,12 +54,28 @@ jobs:
           echo "version=$V" >> "$GITHUB_OUTPUT"
 
       - name: Restore + Build Release APK
+        env:
+          ANDROID_KEYSTORE_B64: ${{ secrets.ANDROID_KEYSTORE_B64 }}
+          ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
         run: |
+          # Materialize the stable release keystore (same key on every build → updates install over old APKs).
+          if [ -n "$ANDROID_KEYSTORE_B64" ]; then
+            printf '%s' "$ANDROID_KEYSTORE_B64" | base64 -d > Src/WsTune.Droid/wstune.keystore
+            ls -la Src/WsTune.Droid/wstune.keystore
+          else
+            echo "::warning::ANDROID_KEYSTORE_B64 secret missing — falling back to random debug key"
+          fi
+
           dotnet restore Src/WsTune.Droid/WsTune.Droid.csproj
           dotnet build Src/WsTune.Droid/WsTune.Droid.csproj \
             -c Release -f net10.0-android \
             -p:Version=${{ steps.ver.outputs.version }} \
             -p:ApplicationDisplayVersion=${{ steps.ver.outputs.version }} \
+            -p:AndroidSigningKeyStore="$PWD/Src/WsTune.Droid/wstune.keystore" \
+            -p:AndroidSigningKeyAlias=wstune \
+            -p:AndroidSigningStorePass="$ANDROID_KEYSTORE_PASSWORD" \
+            -p:AndroidSigningKeyPass="$ANDROID_KEY_PASSWORD" \
             --no-restore
 
       - name: Collect APKs

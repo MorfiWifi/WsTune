@@ -29,6 +29,16 @@
     <AndroidEnableProguard>false</AndroidEnableProguard>
     <AndroidLinkMode>None</AndroidLinkMode>
     <EnableCompressionInSingleFile>false</EnableCompressionInSingleFile>
+
+    <!-- Stable release signing so Updates install over previous versions.
+         Keystore file lives next to this csproj (gitignored); CI materializes it
+         from the ANDROID_KEYSTORE_B64 secret. Override passwords via env for local release builds. -->
+    <AndroidSigningKeyStore Condition="Exists('$(MSBuildProjectDirectory)/wstune.keystore')">$(MSBuildProjectDirectory)/wstune.keystore</AndroidSigningKeyStore>
+    <AndroidSigningKeyAlias Condition="'$(AndroidSigningKeyAlias)' == '' and Exists('$(MSBuildProjectDirectory)/wstune.keystore')">wstune</AndroidSigningKeyAlias>
+    <AndroidSigningStorePass Condition="'$(AndroidSigningStorePass)' == ''">$(ANDROID_KEYSTORE_PASSWORD)</AndroidSigningStorePass>
+    <AndroidSigningKeyPass Condition="'$(AndroidSigningKeyPass)' == ''">$(ANDROID_KEY_PASSWORD)</AndroidSigningKeyPass>
+    <!-- When no release keystore/passwords are present, .NET falls back to a
+         debug keystore (fine for local Run; CI always passes the real secrets). -->
   </PropertyGroup>
 
   <ItemGroup>
@@ -40,6 +50,8 @@
          MaterialCardView, Chips, MaterialToolbar, MaterialAlertDialog) — the same
          library Google apps are built on. -->
     <PackageReference Include="Xamarin.Google.Android.Material" Version="1.14.0.6" />
+    <!-- Crash reporting → sentry.io (DSN set in code). -->
+    <PackageReference Include="Sentry" Version="6.11.1" />
   </ItemGroup>
 
   <ItemGroup>

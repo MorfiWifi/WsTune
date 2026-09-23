@@ -13,6 +13,7 @@ using Google.Android.Material.Chip;
 using Google.Android.Material.Dialog;
 using Google.Android.Material.Snackbar;
 using Google.Android.Material.TextField;
+using Sentry;
 
 namespace WsTune.Droid;
 
@@ -66,6 +67,7 @@ public sealed class MainActivity : AppCompatActivity
 
     protected override void OnCreate(Bundle? savedInstanceState)
     {
+        SentryBootstrap.Init();
         try
         {
             base.OnCreate(savedInstanceState);
@@ -75,6 +77,8 @@ public sealed class MainActivity : AppCompatActivity
         catch (System.Exception ex)
         {
             Android.Util.Log.Error("WsTune", "MainActivity.OnCreate failed: " + ex);
+            SentryBootstrap.Capture(ex, "OnCreate");
+            _ = SentrySdk.FlushAsync(TimeSpan.FromSeconds(2));
             throw;
         }
     }

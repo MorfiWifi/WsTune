@@ -491,3 +491,7 @@ AutumationMachinWeb/wwwroot/autumation_machine_web.min.css
 Notebooks/secrets.json
 *.zip
 *.rar
+
+# Android release keystore — NEVER commit (CI restores from ANDROID_KEYSTORE_B64 secret)
+*.keystore
+*.jks
