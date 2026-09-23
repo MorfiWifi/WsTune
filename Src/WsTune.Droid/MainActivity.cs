@@ -302,8 +302,8 @@ public sealed class MainActivity : Activity
             {
                 Text = GetString(Resource.String.empty_tunnels_title),
                 TextSize = 15,
+                Gravity = GravityFlags.Center,
             };
-            title.SetGravity(GravityFlags.Center);
             title.SetTextColor(ColorRes(Resource.Color.colorOnSurface));
             title.SetTypeface(null, Android.Graphics.TypefaceStyle.Bold);
             title.SetPadding(0, Dp(8), 0, 0);
@@ -313,8 +313,8 @@ public sealed class MainActivity : Activity
             {
                 Text = GetString(Resource.String.empty_tunnels_body),
                 TextSize = 13,
+                Gravity = GravityFlags.Center,
             };
-            body.SetGravity(GravityFlags.Center);
             body.SetTextColor(ColorRes(Resource.Color.colorOnSurfaceVariant));
             empty.AddView(body);
 
