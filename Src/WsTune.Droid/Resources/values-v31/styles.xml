@@ -1,14 +1,15 @@
 <?xml version="1.0" encoding="utf-8" ?>
+<!-- API 31+ (Android 12+): platform SplashScreen on top of MainTheme. -->
 <resources>
-  <!-- Main theme: Material Light, brand colors, splash-as-windowBackground
-       (classic cold-start splash for API 26-30; API 31+ adds SplashScreen attrs
-       in values-v31). -->
   <style name="MainTheme" parent="android:Theme.Material.Light.NoActionBar">
     <item name="android:colorPrimary">@color/colorPrimary</item>
     <item name="android:colorPrimaryDark">@color/colorPrimaryDark</item>
     <item name="android:colorAccent">@color/colorAccent</item>
-    <item name="android:windowBackground">@drawable/splash_screen</item>
+    <item name="android:windowBackground">@color/colorBackground</item>
     <item name="android:statusBarColor">@color/colorPrimaryDark</item>
     <item name="android:navigationBarColor">@color/colorPrimaryDark</item>
+    <item name="android:windowSplashScreenBackground">@color/colorPrimaryDark</item>
+    <item name="android:windowSplashScreenAnimatedIcon">@drawable/ic_launcher_foreground</item>
+    <item name="android:windowSplashScreenIconBackgroundColor">@color/ic_launcher_background</item>
   </style>
 </resources>

@@ -1,7 +1,8 @@
 name: Build Android APK (WsTune Listener)
 
 # Builds the WsTune.Droid listener APK on every push to main, PR, tag,
-# or manual run. Uploads the APK as an artifact; attaches it to Releases on tags.
+# or manual run. Uploads the APK as an artifact AND attaches it to the
+# GitHub Release for the resolved version (push events only).
 on:
   push:
     branches: [ main ]
@@ -11,7 +12,7 @@ on:
   workflow_dispatch:
 
 permissions:
-  contents: write  # needed to attach the APK to GitHub Releases on tags
+  contents: write  # needed to attach the APK to GitHub Releases
 
 concurrency:
   group: wstune-android-apk-${{ github.ref }}
@@ -81,9 +82,20 @@ jobs:
           path: artifacts/*.apk
           if-no-files-found: error
 
-      - name: Attach APK to GitHub Release (tags only)
-        if: startsWith(github.ref, 'refs/tags/v')
+      # Publish the APK into the repo's Releases section (not just Actions artifacts).
+      # On push to main / v* tags both this workflow and release.yml resolve the same
+      # nbgv version, so they attach to the same tag; softprops appends assets to an
+      # existing release instead of replacing it. PRs only get the artifact above.
+      - name: Attach APK to GitHub Release
+        if: github.event_name == 'push'
         uses: softprops/action-gh-release@v2
         with:
-          files: artifacts/*.apk
-          generate_release_notes: true
+          tag_name: v${{ steps.ver.outputs.version }}
+          name: WSTUN v${{ steps.ver.outputs.version }}
+          append_body: true
+          fail_on_unmatched_files: true
+          body: |
+            **Android**
+            - `com.wstune.listener-*.apk` — WsTune Listener for Android (universal `arm64-v8a` + `arm`), built from `Src/WsTune.Droid`.
+          files: |
+            artifacts/*.apk

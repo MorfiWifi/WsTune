@@ -11,6 +11,7 @@
     <ApplicationId>com.wstune.listener</ApplicationId>
     <ApplicationVersion>1</ApplicationVersion>
     <ApplicationDisplayVersion>1.1.0</ApplicationDisplayVersion>
+    <ApplicationTitle>WsTune Listener</ApplicationTitle>
     <SupportedOSPlatformVersion>26</SupportedOSPlatformVersion>
     <!-- Android 8.0 (API 26) minimum: Notification channels + ForegroundService required -->
 

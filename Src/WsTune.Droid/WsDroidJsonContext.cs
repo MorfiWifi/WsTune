@@ -16,4 +16,7 @@ namespace WsTune.Droid;
 [JsonSerializable(typeof(TunnelConfigDto))]
 [JsonSerializable(typeof(ConnectionPacket))]
 [JsonSerializable(typeof(AppSettings))]
+[JsonSerializable(typeof(AppState))]
+[JsonSerializable(typeof(ProfileEntry))]
+[JsonSerializable(typeof(List<ProfileEntry>))]
 public partial class WsDroidJsonContext : JsonSerializerContext;

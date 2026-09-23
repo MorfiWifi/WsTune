@@ -1,4 +1,12 @@
 <?xml version="1.0" encoding="utf-8" ?>
 <resources>
   <string name="app_name">WsTune Listener</string>
+  <string name="hint_signalr_url">Host SignalR URL (https://…)</string>
+  <string name="hint_identity">Identity (set once)</string>
+  <string name="label_identity_locked">Identity is locked after the first start.</string>
+  <string name="btn_add_tunnel">+ Add tunnel</string>
+  <string name="btn_save_profile">Save profile</string>
+  <string name="btn_delete_profile">Delete</string>
+  <string name="btn_start">Start listener</string>
+  <string name="btn_stop">Stop listener</string>
 </resources>

@@ -3,4 +3,12 @@
   <color name="colorPrimary">#3F51B5</color>
   <color name="colorPrimaryDark">#303F9F</color>
   <color name="colorAccent">#FF4081</color>
+  <color name="colorPrimaryVariant">#1A237E</color>
+  <color name="colorSuccess">#2E7D32</color>
+  <color name="colorError">#C62828</color>
+  <color name="colorSurface">#FFFFFF</color>
+  <color name="colorBackground">#F4F6FB</color>
+  <color name="colorTextPrimary">#1C1B1F</color>
+  <color name="colorTextSecondary">#5A5A6E</color>
+  <color name="ic_launcher_background">#1A237E</color>
 </resources>
