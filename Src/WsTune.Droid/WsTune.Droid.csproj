@@ -17,8 +17,8 @@
     <!-- Single universal APK (not AAB, not per-ABI) so GitHub Action artifacts install directly -->
     <AndroidPackageFormat>apk</AndroidPackageFormat>
     <AndroidCreatePackagePerAbi>false</AndroidCreatePackagePerAbi>
-    <!-- arm64 covers all modern phones; armeabi-v7a keeps old devices working -->
-    <AndroidSupportedAbis>arm64-v8a;armeabi-v7a</AndroidSupportedAbis>
+    <!-- arm64 covers all modern phones; arm keeps old devices working -->
+    <RuntimeIdentifiers>android-arm64;android-arm</RuntimeIdentifiers>
 
     <!-- SignalR + trimming do not mix (same reason the linux-bionic build ships
          untrimmed): keep trimming/AOT off so the APK just works. -->

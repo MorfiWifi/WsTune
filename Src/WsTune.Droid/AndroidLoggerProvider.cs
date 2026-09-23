@@ -10,6 +10,12 @@ public sealed class AndroidLoggerProvider : ILoggerProvider
 {
     public event Action<string>? OnLog;
 
+    /// <summary>Allows non-owning types (e.g. the foreground service) to publish a log line.</summary>
+    public void Report(string message)
+    {
+        try { OnLog?.Invoke(message); } catch { /* ignore */ }
+    }
+
     public ILogger CreateLogger(string categoryName) => new AndroidLogger(categoryName, OnLog);
 
     public void Dispose() { }

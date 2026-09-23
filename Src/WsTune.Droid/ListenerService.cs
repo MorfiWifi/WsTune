@@ -112,7 +112,7 @@ public sealed class ListenerService : Service
         {
             Status = $"Error: {ex.Message}";
             UpdateNotification($"Error: {ex.Message}");
-            LogProvider.OnLog?.Invoke($"{DateTime.Now:HH:mm:ss} [Error] startup failed: {ex}");
+            LogProvider.Report($"{DateTime.Now:HH:mm:ss} [Error] startup failed: {ex}");
         }
     }
 

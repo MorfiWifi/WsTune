@@ -76,7 +76,7 @@ public sealed class MainActivity : Activity
             }
             else
             {
-                et.SingleLine = true;
+                et.SetSingleLine(true);
             }
             return et;
         }
