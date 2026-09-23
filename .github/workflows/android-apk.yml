@@ -1,0 +1,88 @@
+name: Build Android APK (WsTune Listener)
+
+# Builds the WsTune.Droid listener APK on every push to main, PR, tag,
+# or manual run. Uploads the APK as an artifact; attaches it to Releases on tags.
+on:
+  push:
+    branches: [ main ]
+    tags: [ 'v*' ]
+  pull_request:
+    branches: [ main ]
+  workflow_dispatch:
+
+permissions:
+  contents: write  # needed to attach the APK to GitHub Releases on tags
+
+concurrency:
+  group: wstune-android-apk-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build-apk:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup Java 17 (required by Android SDK / Gradle)
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Setup .NET 10 SDK
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+
+      - name: Install Android workload
+        run: dotnet workload install android
+
+      - name: Compute version (Nerdbank.GitVersioning)
+        id: ver
+        shell: bash
+        run: |
+          dotnet tool install --global nbgv
+          echo "$HOME/.dotnet/tools" >> "$GITHUB_PATH"
+          export PATH="$HOME/.dotnet/tools:$PATH"
+          V=$(nbgv get-version --field SimpleVersion)
+          echo "Resolved version: $V"
+          echo "version=$V" >> "$GITHUB_OUTPUT"
+
+      - name: Restore + Build Release APK
+        run: |
+          dotnet restore Src/WsTune.Droid/WsTune.Droid.csproj
+          dotnet build Src/WsTune.Droid/WsTune.Droid.csproj \
+            -c Release -f net10.0-android \
+            -p:Version=${{ steps.ver.outputs.version }} \
+            -p:ApplicationDisplayVersion=${{ steps.ver.outputs.version }} \
+            --no-restore
+
+      - name: Collect APKs
+        shell: bash
+        run: |
+          mkdir -p artifacts
+          find Src/WsTune.Droid/bin/Release -name '*-Signed.apk' -exec cp -v {} artifacts/ \;
+          # Friendly names: keep original + versioned copy
+          for f in artifacts/*-Signed.apk; do
+            [ -e "$f" ] || continue
+            base=$(basename "$f" -Signed.apk)
+            cp -v "$f" "artifacts/${base}-v${{ steps.ver.outputs.version }}.apk"
+          done
+          ls -lh artifacts/
+
+      - name: Upload APK artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: wstune-listener-apk
+          path: artifacts/*.apk
+          if-no-files-found: error
+
+      - name: Attach APK to GitHub Release (tags only)
+        if: startsWith(github.ref, 'refs/tags/v')
+        uses: softprops/action-gh-release@v2
+        with:
+          files: artifacts/*.apk
+          generate_release_notes: true

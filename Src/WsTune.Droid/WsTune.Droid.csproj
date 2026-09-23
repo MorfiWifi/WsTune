@@ -1,0 +1,48 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net10.0-android</TargetFramework>
+    <OutputType>Exe</OutputType>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <LangVersion>default</LangVersion>
+
+    <!-- Android app identity -->
+    <ApplicationId>com.wstune.listener</ApplicationId>
+    <ApplicationVersion>1</ApplicationVersion>
+    <ApplicationDisplayVersion>1.1.0</ApplicationDisplayVersion>
+    <SupportedOSPlatformVersion>26</SupportedOSPlatformVersion>
+    <!-- Android 8.0 (API 26) minimum: Notification channels + ForegroundService required -->
+
+    <!-- Single universal APK (not AAB, not per-ABI) so GitHub Action artifacts install directly -->
+    <AndroidPackageFormat>apk</AndroidPackageFormat>
+    <AndroidCreatePackagePerAbi>false</AndroidCreatePackagePerAbi>
+    <!-- arm64 covers all modern phones; armeabi-v7a keeps old devices working -->
+    <AndroidSupportedAbis>arm64-v8a;armeabi-v7a</AndroidSupportedAbis>
+
+    <!-- SignalR + trimming do not mix (same reason the linux-bionic build ships
+         untrimmed): keep trimming/AOT off so the APK just works. -->
+    <PublishTrimmed>false</PublishTrimmed>
+    <PublishAot>false</PublishAot>
+    <AndroidEnableProguard>false</AndroidEnableProguard>
+    <AndroidLinkMode>None</AndroidLinkMode>
+    <EnableCompressionInSingleFile>false</EnableCompressionInSingleFile>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.AspNetCore.SignalR.Client" Version="10.0.10" />
+    <PackageReference Include="Microsoft.AspNetCore.SignalR.Protocols.Json" Version="10.0.10" />
+    <PackageReference Include="Microsoft.Extensions.DependencyInjection" Version="10.0.0" />
+    <PackageReference Include="Microsoft.Extensions.Logging" Version="10.0.0" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Libraries\WsTune.SignalR.Extensions\WsTune.SignalR.Extensions.csproj" />
+    <ProjectReference Include="..\Libraries\WsTuneCommon\WsTuneCommon.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <AndroidAsset Include="Assets/appsettings.listener.json" />
+  </ItemGroup>
+
+</Project>
