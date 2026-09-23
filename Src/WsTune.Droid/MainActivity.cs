@@ -668,7 +668,7 @@ public sealed class MainActivity : AppCompatActivity
         };
         var edit = new TextInputEditText(this)
         {
-            LayoutParameters = new ViewGroup.LayoutParams(-1, ViewGroup.LayoutParams.WrapContent),
+            LayoutParameters = new LinearLayout.LayoutParams(-1, ViewGroup.LayoutParams.WrapContent),
             InputType = inputTypes,
         };
         edit.SetSingleLine(true);
