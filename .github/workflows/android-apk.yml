@@ -72,6 +72,7 @@ jobs:
             -c Release -f net10.0-android \
             -p:Version=${{ steps.ver.outputs.version }} \
             -p:ApplicationDisplayVersion=${{ steps.ver.outputs.version }} \
+            -p:AndroidKeyStore=True \
             -p:AndroidSigningKeyStore="$PWD/Src/WsTune.Droid/wstune.keystore" \
             -p:AndroidSigningKeyAlias=wstune \
             -p:AndroidSigningStorePass="$ANDROID_KEYSTORE_PASSWORD" \
