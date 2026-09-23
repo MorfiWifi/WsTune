@@ -642,7 +642,7 @@ public sealed class MainActivity : AppCompatActivity
         {
             LayoutParameters = new LinearLayout.LayoutParams(Dp(48), Dp(48)) { LeftMargin = Dp(4) },
             ContentDescription = GetString(contentDesc),
-            ScaleType = Android.Widget.ScaleType.FitCenter,
+            ScaleType = ImageView.ScaleType.FitCenter,
         };
         b.SetImageResource(icon);
         b.SetBackgroundColor(Android.Graphics.Color.Transparent);
