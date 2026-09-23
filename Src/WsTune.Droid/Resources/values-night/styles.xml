@@ -27,7 +27,5 @@
     <item name="android:navigationBarColor">@color/colorSurface</item>
     <item name="android:windowLightNavigationBar">false</item>
     <item name="android:windowActionModeOverlay">true</item>
-    <!-- Default programmatic TextInputLayout style (defStyleAttr=0 uses textInputStyle). -->
-    <item name="textInputStyle">@style/Widget_Material3_TextInputLayout_OutlinedBox</item>
   </style>
 </resources>
