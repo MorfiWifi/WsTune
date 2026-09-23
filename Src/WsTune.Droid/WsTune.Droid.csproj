@@ -36,6 +36,10 @@
     <PackageReference Include="Microsoft.AspNetCore.SignalR.Protocols.Json" Version="10.0.10" />
     <PackageReference Include="Microsoft.Extensions.DependencyInjection" Version="10.0.10" />
     <PackageReference Include="Microsoft.Extensions.Logging" Version="10.0.10" />
+    <!-- Material Design 3 components (TextInputLayout, MaterialButton, Snackbar,
+         MaterialCardView, Chips, MaterialToolbar, MaterialAlertDialog) — the same
+         library Google apps are built on. -->
+    <PackageReference Include="Xamarin.Google.Android.Material" Version="1.14.0.6" />
   </ItemGroup>
 
   <ItemGroup>

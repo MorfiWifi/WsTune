@@ -1,12 +1,51 @@
 <?xml version="1.0" encoding="utf-8" ?>
 <resources>
   <string name="app_name">WsTune Listener</string>
-  <string name="hint_signalr_url">Host SignalR URL (https://…)</string>
-  <string name="hint_identity">Identity (set once)</string>
-  <string name="label_identity_locked">Identity is locked after the first start.</string>
-  <string name="btn_add_tunnel">+ Add tunnel</string>
-  <string name="btn_save_profile">Save profile</string>
+  <string name="toolbar_subtitle">TCP tunnels over WebSockets</string>
+
+  <string name="card_connection">Connection</string>
+  <string name="card_tunnels">Tunnels</string>
+  <string name="card_log">Log</string>
+
+  <string name="hint_signalr_url">https://your-host/sample-endpoint</string>
+  <string name="hint_profile">Profile</string>
+  <string name="hint_identity">Identity</string>
+  <string name="hint_name">Name</string>
+  <string name="hint_destination">Destination</string>
+  <string name="hint_listen_port">Listen port</string>
+  <string name="hint_target_port">Target port</string>
+  <string name="hint_target_host">Target host</string>
+
+  <string name="helper_identity_open">Editable until first Start, then locked.</string>
+  <string name="helper_identity_locked">Locked for this installation.</string>
+  <string name="tunnels_hint">Each entry: local listen port → destination via the Host.</string>
+  <string name="empty_tunnels_title">No tunnels yet</string>
+  <string name="empty_tunnels_body">Tap Add tunnel to create one.</string>
+
+  <string name="btn_add_tunnel">Add tunnel</string>
+  <string name="btn_save_profile">Save</string>
   <string name="btn_delete_profile">Delete</string>
-  <string name="btn_start">Start listener</string>
-  <string name="btn_stop">Stop listener</string>
+  <string name="btn_start">Start</string>
+  <string name="btn_stop">Stop</string>
+  <string name="btn_clear_log">Clear</string>
+  <string name="btn_undo">Undo</string>
+  <string name="btn_save">Save</string>
+  <string name="btn_cancel">Cancel</string>
+  <string name="btn_delete">Delete</string>
+
+  <string name="status_stopped">Stopped</string>
+  <string name="title_save_profile">Save profile</string>
+  <string name="title_delete_profile">Delete profile</string>
+  <string name="msg_save_profile">Stores the current Host SignalR URL under this name.</string>
+  <string name="msg_delete_profile">Delete this profile? The URL field keeps its current value.</string>
+  <string name="msg_profile_missing">No active profile</string>
+  <string name="msg_name_required">Name required</string>
+  <string name="msg_no_active_profile">No active profile</string>
+  <string name="msg_url_invalid">Enter a full SignalR URL, e.g. https://your-host/sample-endpoint</string>
+  <string name="msg_no_tunnels">Add at least one tunnel.</string>
+
+  <string name="cd_delete_tunnel">Remove tunnel</string>
+  <string name="cd_save_profile">Save profile</string>
+  <string name="cd_delete_profile">Delete profile</string>
+  <string name="cd_status">Listener status</string>
 </resources>

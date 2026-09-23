@@ -1,6 +1,7 @@
 <?xml version="1.0" encoding="utf-8" ?>
-<!-- API 31+ (Android 12+): Material 3 + platform SplashScreen on top. -->
 <resources>
+  <!-- Dark variant of MainTheme (DayNight picks colors via values-night, but
+       status/nav-bar light-icon flags must flip). -->
   <style name="MainTheme" parent="Theme.Material3.DayNight.NoActionBar">
     <item name="colorPrimary">@color/colorPrimary</item>
     <item name="colorOnPrimary">@color/colorOnPrimary</item>
@@ -20,13 +21,11 @@
 
     <item name="android:colorPrimary">@color/colorPrimary</item>
     <item name="android:colorAccent">@color/colorAccent</item>
-    <item name="android:windowBackground">@color/colorBackground</item>
+    <item name="android:windowBackground">@drawable/splash_screen</item>
     <item name="android:statusBarColor">@color/colorSurface</item>
-    <item name="android:windowLightStatusBar">true</item>
+    <item name="android:windowLightStatusBar">false</item>
     <item name="android:navigationBarColor">@color/colorSurface</item>
-    <item name="android:windowLightNavigationBar">true</item>
-    <item name="android:windowSplashScreenBackground">#1A237E</item>
-    <item name="android:windowSplashScreenAnimatedIcon">@drawable/ic_launcher_foreground</item>
-    <item name="android:windowSplashScreenIconBackgroundColor">@color/ic_launcher_background</item>
+    <item name="android:windowLightNavigationBar">false</item>
+    <item name="android:windowActionModeOverlay">true</item>
   </style>
 </resources>

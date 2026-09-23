@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<!-- Material 3 color roles, dark scheme. -->
+<resources>
+  <color name="colorPrimary">#A5B4FC</color>
+  <color name="colorPrimaryDark">#0D1030</color>
+  <color name="colorAccent">#FF80AB</color>
+  <color name="colorPrimaryVariant">#312E81</color>
+  <color name="colorOnPrimary">#1A237E</color>
+  <color name="colorPrimaryContainer">#3730A3</color>
+  <color name="colorOnPrimaryContainer">#C5CAE9</color>
+  <color name="colorSuccess">#81C784</color>
+  <color name="colorOnSuccess">#0B3D10</color>
+  <color name="colorError">#F2B8B5</color>
+  <color name="colorOnError">#601410</color>
+  <color name="colorSurface">#1C1B1F</color>
+  <color name="colorOnSurface">#E6E1E5</color>
+  <color name="colorSurfaceVariant">#2B2930</color>
+  <color name="colorOnSurfaceVariant">#C6C5D0</color>
+  <color name="colorOutline">#4A4850</color>
+  <color name="colorBackground">#121218</color>
+  <color name="colorTextPrimary">#E6E1E5</color>
+  <color name="colorTextSecondary">#C6C5D0</color>
+  <color name="colorSurfaceContainer">#211F26</color>
+  <color name="ic_launcher_background">#1A237E</color>
+</resources>
