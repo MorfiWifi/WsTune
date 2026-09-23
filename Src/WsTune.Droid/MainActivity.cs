@@ -40,6 +40,10 @@ public sealed class MainActivity : Activity
 
     private int Dp(int value) => (int)(value * (Resources?.DisplayMetrics?.Density ?? 2f));
 
+    /// <summary>Resolve a color resource to <see cref="Android.Graphics.Color"/> (GetColor returns int).</summary>
+    private Android.Graphics.Color ColorRes(int resourceId)
+        => new(GetColor(resourceId));
+
     // ------------------------------------------------------------------ UI --
 
     protected override void OnCreate(Bundle? savedInstanceState)
@@ -51,8 +55,8 @@ public sealed class MainActivity : Activity
         var page = new LinearLayout(this)
         {
             Orientation = Orientation.Vertical,
-            Background = GetColor(Resource.Color.colorBackground),
         };
+        page.SetBackgroundColor(ColorRes(Resource.Color.colorBackground));
         page.SetPadding(Dp(16), Dp(0), Dp(16), Dp(24));
 
         page.AddView(BuildHeader());
@@ -107,7 +111,7 @@ public sealed class MainActivity : Activity
 
         var icon = new ImageView(this) { LayoutParameters = new ViewGroup.LayoutParams(Dp(36), Dp(36)) };
         icon.SetImageResource(Resource.Drawable.ic_launcher_foreground);
-        icon.SetBackgroundColor(GetColor(Resource.Color.ic_launcher_background));
+        icon.SetBackgroundColor(ColorRes(Resource.Color.ic_launcher_background));
         icon.SetPadding(Dp(6), Dp(6), Dp(6), Dp(6));
         row.AddView(icon);
 
@@ -123,12 +127,12 @@ public sealed class MainActivity : Activity
             Text = "WsTune Listener",
             TextSize = 22,
         };
-        title.SetTextColor(GetColor(Resource.Color.colorTextPrimary));
+        title.SetTextColor(ColorRes(Resource.Color.colorTextPrimary));
         title.SetTypeface(null, Android.Graphics.TypefaceStyle.Bold);
         titles.AddView(title);
 
         var subtitle = new TextView(this) { Text = "TCP tunnels over WebSockets", TextSize = 13 };
-        subtitle.SetTextColor(GetColor(Resource.Color.colorTextSecondary));
+        subtitle.SetTextColor(ColorRes(Resource.Color.colorTextSecondary));
         titles.AddView(subtitle);
 
         row.AddView(titles);
@@ -203,7 +207,7 @@ public sealed class MainActivity : Activity
                 : "Editable until the first Start, then locked.",
             TextSize = 12,
         };
-        _identityLockNote.SetTextColor(GetColor(Resource.Color.colorTextSecondary));
+        _identityLockNote.SetTextColor(ColorRes(Resource.Color.colorTextSecondary));
         _identityLockNote.SetPadding(0, Dp(6), 0, 0);
         card.AddView(_identityLockNote);
 
@@ -221,7 +225,7 @@ public sealed class MainActivity : Activity
             Text = "Each entry: local listen port → destination via the Host.",
             TextSize = 12,
         };
-        hint.SetTextColor(GetColor(Resource.Color.colorTextSecondary));
+        hint.SetTextColor(ColorRes(Resource.Color.colorTextSecondary));
         hint.SetPadding(0, 0, 0, Dp(8));
         card.AddView(hint);
 
@@ -229,7 +233,7 @@ public sealed class MainActivity : Activity
         card.AddView(_tunnelList);
 
         var addBtn = NewSmallButton("+ Add tunnel");
-        addBtn.SetBackgroundColor(GetColor(Resource.Color.colorPrimary));
+        addBtn.SetBackgroundColor(ColorRes(Resource.Color.colorPrimary));
         addBtn.SetTextColor(Android.Graphics.Color.White);
         var addLp = new LinearLayout.LayoutParams(ViewGroup.LayoutParams.WrapContent, Dp(44)) { TopMargin = Dp(8) };
         addBtn.LayoutParameters = addLp;
@@ -261,7 +265,7 @@ public sealed class MainActivity : Activity
         if (_state.Tunnels.Count == 0)
         {
             var empty = new TextView(this) { Text = "No tunnels yet — tap “+ Add tunnel”.", TextSize = 13 };
-            empty.SetTextColor(GetColor(Resource.Color.colorTextSecondary));
+            empty.SetTextColor(ColorRes(Resource.Color.colorTextSecondary));
             empty.SetPadding(0, Dp(4), 0, Dp(4));
             _tunnelList.AddView(empty);
             return;
@@ -290,7 +294,7 @@ public sealed class MainActivity : Activity
             head.AddView(headName);
 
             var remove = new TextView(this) { Text = "Remove", TextSize = 13 };
-            remove.SetTextColor(GetColor(Resource.Color.colorError));
+            remove.SetTextColor(ColorRes(Resource.Color.colorError));
             remove.SetPadding(Dp(8), Dp(4), Dp(4), Dp(4));
             var rIdx = index;
             remove.Click += (_, _) =>
@@ -314,12 +318,12 @@ public sealed class MainActivity : Activity
             // Listen port / target port row
             var row2 = new LinearLayout(this) { Orientation = Orientation.Horizontal };
             row2.AddView(SpinField("Listen port", tunnel, t => t.ListenPort.ToString(), dark: true, weight: 1f,
-                inputType: InputTypes.ClassNumber, onSet: (t, v) =>
+                inputTypes: InputTypes.ClassNumber, onSet: (t, v) =>
                 {
                     if (int.TryParse(v, out var p)) t.ListenPort = p;
                 }));
             row2.AddView(SpinField("Target port", tunnel, t => t.TargetPort.ToString(), dark: true, weight: 1f,
-                inputType: InputTypes.ClassNumber, onSet: (t, v) =>
+                inputTypes: InputTypes.ClassNumber, onSet: (t, v) =>
                 {
                     if (int.TryParse(v, out var p)) t.TargetPort = p;
                 }));
@@ -383,8 +387,8 @@ public sealed class MainActivity : Activity
             LayoutParameters = new LinearLayout.LayoutParams(-1, Dp(44)),
             InputType = inputTypes,
         };
-        edit.SetTextColor(dark ? Android.Graphics.Color.White : GetColor(Resource.Color.colorTextPrimary));
-        edit.SetHintTextColor(dark ? Android.Graphics.Color.Argb(120, 255, 255, 255) : GetColor(Resource.Color.colorTextSecondary));
+        edit.SetTextColor(dark ? Android.Graphics.Color.White : ColorRes(Resource.Color.colorTextPrimary));
+        edit.SetHintTextColor(dark ? Android.Graphics.Color.Argb(120, 255, 255, 255) : ColorRes(Resource.Color.colorTextSecondary));
         edit.SetBackgroundResource(Resource.Drawable.edit_bg_selector);
         edit.SetPadding(Dp(10), 0, Dp(10), 0);
         if (singleLine || inputTypes == InputTypes.ClassNumber)
@@ -416,7 +420,7 @@ public sealed class MainActivity : Activity
         var card = NewCard("Control");
 
         _statusText = new TextView(this) { Text = "Status: Stopped", TextSize = 14 };
-        _statusText.SetTextColor(GetColor(Resource.Color.colorTextSecondary));
+        _statusText.SetTextColor(ColorRes(Resource.Color.colorTextSecondary));
         _statusText.SetPadding(0, 0, 0, Dp(10));
         card.AddView(_statusText);
 
@@ -427,7 +431,7 @@ public sealed class MainActivity : Activity
         };
         _toggleButton.SetBackgroundResource(Resource.Drawable.button_primary_bg);
         _toggleButton.SetTextColor(Android.Graphics.Color.White);
-        _toggleButton.SetTextSize(Unit.Sp, 16);
+        _toggleButton.SetTextSize(Android.Util.ComplexUnitType.Sp, 16);
         _toggleButton.Click += OnToggleClicked;
         card.AddView(_toggleButton);
 
@@ -444,7 +448,7 @@ public sealed class MainActivity : Activity
             Typeface = Android.Graphics.Typeface.Monospace,
             Text = "",
         };
-        _logText.SetTextColor(GetColor(Resource.Color.colorTextPrimary));
+        _logText.SetTextColor(ColorRes(Resource.Color.colorTextPrimary));
 
         _logScroll = new ScrollView(this)
         {
@@ -469,7 +473,7 @@ public sealed class MainActivity : Activity
         outer.SetPadding(Dp(16), Dp(14), Dp(16), Dp(16));
 
         var head = new TextView(this) { Text = title, TextSize = 17 };
-        head.SetTextColor(GetColor(Resource.Color.colorTextPrimary));
+        head.SetTextColor(ColorRes(Resource.Color.colorTextPrimary));
         head.SetTypeface(null, Android.Graphics.TypefaceStyle.Bold);
         head.SetPadding(0, 0, 0, Dp(6));
         outer.AddView(head);
@@ -481,7 +485,7 @@ public sealed class MainActivity : Activity
         var label = new TextView(this) { Text = text, TextSize = 12 };
         label.SetTextColor(dark
             ? Android.Graphics.Color.Argb(180, 255, 255, 255)
-            : GetColor(Resource.Color.colorTextSecondary));
+            : ColorRes(Resource.Color.colorTextSecondary));
         label.SetPadding(0, 0, 0, Dp(2));
         return label;
     }
@@ -494,8 +498,8 @@ public sealed class MainActivity : Activity
             LayoutParameters = new LinearLayout.LayoutParams(-1, Dp(48)),
             InputType = inputType,
         };
-        edit.SetTextColor(GetColor(Resource.Color.colorTextPrimary));
-        edit.SetHintTextColor(GetColor(Resource.Color.colorTextSecondary));
+        edit.SetTextColor(ColorRes(Resource.Color.colorTextPrimary));
+        edit.SetHintTextColor(ColorRes(Resource.Color.colorTextSecondary));
         edit.SetBackgroundResource(Resource.Drawable.edit_bg_selector);
         edit.SetPadding(Dp(12), 0, Dp(12), 0);
         edit.SetSingleLine(true);
@@ -511,7 +515,7 @@ public sealed class MainActivity : Activity
         };
         b.SetBackgroundResource(Resource.Drawable.button_primary_bg);
         b.SetTextColor(Android.Graphics.Color.White);
-        b.SetTextSize(Unit.Sp, 13);
+        b.SetTextSize(Android.Util.ComplexUnitType.Sp, 13);
         return b;
     }
 
@@ -708,15 +712,15 @@ public sealed class MainActivity : Activity
                     ? GetString(Resource.String.btn_stop)
                     : GetString(Resource.String.btn_start);
                 _toggleButton.SetBackgroundColor(ListenerService.IsRunning
-                    ? GetColor(Resource.Color.colorError)
-                    : GetColor(Resource.Color.colorPrimary));
+                    ? ColorRes(Resource.Color.colorError)
+                    : ColorRes(Resource.Color.colorPrimary));
             }
             if (_statusText is not null)
             {
                 _statusText.Text = "Status: " + ListenerService.Status;
                 _statusText.SetTextColor(ListenerService.IsRunning
-                    ? GetColor(Resource.Color.colorSuccess)
-                    : GetColor(Resource.Color.colorTextSecondary));
+                    ? ColorRes(Resource.Color.colorSuccess)
+                    : ColorRes(Resource.Color.colorTextSecondary));
             }
         });
     }
