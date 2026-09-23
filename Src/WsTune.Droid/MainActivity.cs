@@ -5,6 +5,7 @@ using Android.OS;
 using Android.Text;
 using Android.Views;
 using Android.Widget;
+using AndroidX.AppCompat.App;
 using Google.Android.Material.AppBar;
 using Google.Android.Material.Button;
 using Google.Android.Material.Card;
@@ -20,6 +21,7 @@ namespace WsTune.Droid;
 /// outlined text fields, card surfaces, chip protocol selector, exposed-dropdown
 /// profiles, Snackbar feedback, sticky bottom Start/Stop bar. State is persisted
 /// in <see cref="AppState"/> (SharedPreferences).
+/// Material widgets require AppCompatActivity (not plain Activity).
 /// </summary>
 [Activity(
     Label = "WsTune Listener",
@@ -28,8 +30,9 @@ namespace WsTune.Droid;
     Theme = "@style/MainTheme",
     ConfigurationChanges = Android.Content.PM.ConfigChanges.ScreenSize
         | Android.Content.PM.ConfigChanges.Orientation
-        | Android.Content.PM.ConfigChanges.KeyboardHidden)]
-public sealed class MainActivity : Activity
+        | Android.Content.PM.ConfigChanges.KeyboardHidden
+        | Android.Content.PM.ConfigChanges.UiMode)]
+public sealed class MainActivity : AppCompatActivity
 {
     private AppState _state = AppState.CreateDefault();
 
@@ -63,8 +66,21 @@ public sealed class MainActivity : Activity
 
     protected override void OnCreate(Bundle? savedInstanceState)
     {
-        base.OnCreate(savedInstanceState);
+        try
+        {
+            base.OnCreate(savedInstanceState);
+            BuildUi(savedInstanceState);
+            RequestNotificationPermissionIfNeeded();
+        }
+        catch (System.Exception ex)
+        {
+            Android.Util.Log.Error("WsTune", "MainActivity.OnCreate failed: " + ex);
+            throw;
+        }
+    }
 
+    private void BuildUi(Bundle? savedInstanceState)
+    {
         _state = AppState.Load(this);
 
         var root = new LinearLayout(this)
@@ -95,7 +111,6 @@ public sealed class MainActivity : Activity
         RenderProfiles();
         RenderTunnels();
         RefreshState();
-        RequestNotificationPermissionIfNeeded();
     }
 
     protected override void OnResume()
@@ -131,8 +146,6 @@ public sealed class MainActivity : Activity
         toolbar.SetTitleTextColor(ColorRes(Resource.Color.colorOnSurface));
         toolbar.SetSubtitle(Resource.String.toolbar_subtitle);
         toolbar.SetSubtitleTextColor(ColorRes(Resource.Color.colorOnSurfaceVariant));
-        toolbar.Logo = GetDrawable(Resource.Drawable.ic_launcher_foreground);
-        toolbar.LogoDescription = GetString(Resource.String.app_name);
         return toolbar;
     }
 
@@ -157,13 +170,13 @@ public sealed class MainActivity : Activity
         };
         profileRow.SetGravity(GravityFlags.CenterVertical);
 
-        var profileTil = new TextInputLayout(this, null,
-            Resource.Style.Widget_Material3_TextInputLayout_OutlinedBox_ExposedDropdownMenu)
+        var profileTil = new TextInputLayout(this)
         {
             LayoutParameters = new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WrapContent, 1f),
             Hint = GetString(Resource.String.hint_profile),
-            EndIconMode = TextInputLayout.EndIconCustom,
         };
+        // Exposed-dropdown look without passing a widget style as defStyleAttr.
+        profileTil.EndIconMode = TextInputLayout.EndIconCustom;
         profileTil.SetEndIconDrawable(Resource.Drawable.ic_tunnel);
         profileTil.EndIconContentDescription = GetString(Resource.String.hint_profile);
 
@@ -247,7 +260,7 @@ public sealed class MainActivity : Activity
         _tunnelList = new LinearLayout(this) { Orientation = Orientation.Vertical };
         content.AddView(_tunnelList);
 
-        var addBtn = new MaterialButton(this, null, Resource.Style.Widget_Material3_Button_TonalButton)
+        var addBtn = new MaterialButton(this)
         {
             Text = GetString(Resource.String.btn_add_tunnel),
             LayoutParameters = new LinearLayout.LayoutParams(-1, ViewGroup.LayoutParams.WrapContent) { TopMargin = Dp(12) },
@@ -537,12 +550,17 @@ public sealed class MainActivity : Activity
             LayoutParameters = new LinearLayout.LayoutParams(-1, ViewGroup.LayoutParams.WrapContent),
         };
         actions.SetGravity(GravityFlags.End);
-        var clearBtn = new MaterialButton(this, null, Resource.Style.Widget_Material3_Button_TextButton)
+        var clearBtn = new MaterialButton(this)
         {
             Text = GetString(Resource.String.btn_clear_log),
             LayoutParameters = new LinearLayout.LayoutParams(
                 ViewGroup.LayoutParams.WrapContent, ViewGroup.LayoutParams.WrapContent),
         };
+        clearBtn.InsetTop = 0;
+        clearBtn.InsetBottom = 0;
+        clearBtn.SetTextColor(ColorRes(Resource.Color.colorPrimary));
+        clearBtn.BackgroundTintList = Android.Content.Res.ColorStateList.ValueOf(
+            ColorRes(Resource.Color.colorSurfaceContainer));
         clearBtn.Click += (_, _) =>
         {
             if (_logText is not null) _logText.Text = string.Empty;
@@ -611,31 +629,33 @@ public sealed class MainActivity : Activity
 
     private Chip ProtocolChip(string protocol)
     {
-        return new Chip(this, null, Resource.Style.Widget_Material3_Chip_Filter)
+        return new Chip(this)
         {
             Text = protocol,
             Checkable = true,
         };
     }
 
-    private MaterialButton IconButton(int contentDesc, int icon)
+    private ImageButton IconButton(int contentDesc, int icon)
     {
-        var b = new MaterialButton(this, null, Resource.Style.Widget_Material3_Button_IconButton)
+        var b = new ImageButton(this)
         {
             LayoutParameters = new LinearLayout.LayoutParams(Dp(48), Dp(48)) { LeftMargin = Dp(4) },
             ContentDescription = GetString(contentDesc),
+            ScaleType = Android.Widget.ScaleType.FitCenter,
         };
-        b.SetIconResource(icon);
-        b.InsetTop = 0;
-        b.InsetBottom = 0;
-        b.IconSize = Dp(24);
+        b.SetImageResource(icon);
+        b.SetBackgroundColor(Android.Graphics.Color.Transparent);
+        b.SetPadding(Dp(12), Dp(12), Dp(12), Dp(12));
         return b;
     }
 
     /// <summary>Outlined TextInputLayout + TextInputEditText (floating label), full width.</summary>
     private TextInputLayout OutlinedField(string hint, InputTypes inputTypes)
     {
-        var til = new TextInputLayout(this, null, Resource.Style.Widget_Material3_TextInputLayout_OutlinedBox)
+        // defStyleAttr=0 → theme textInputStyle (set in MainTheme). Passing a style
+        // ID as defStyleAttr is incorrect for Android and can break ThemeEnforcement.
+        var til = new TextInputLayout(this)
         {
             LayoutParameters = new LinearLayout.LayoutParams(-1, ViewGroup.LayoutParams.WrapContent)
             {

@@ -28,5 +28,7 @@
     <item name="android:windowSplashScreenBackground">#1A237E</item>
     <item name="android:windowSplashScreenAnimatedIcon">@drawable/ic_launcher_foreground</item>
     <item name="android:windowSplashScreenIconBackgroundColor">@color/ic_launcher_background</item>
+    <!-- Default programmatic TextInputLayout style (defStyleAttr=0 uses textInputStyle). -->
+    <item name="textInputStyle">@style/Widget_Material3_TextInputLayout_OutlinedBox</item>
   </style>
 </resources>
