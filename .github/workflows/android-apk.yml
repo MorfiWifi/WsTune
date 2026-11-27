@@ -1,0 +1,118 @@
+name: Build Android APK (WsTune Listener)
+
+# Builds the WsTune.Droid listener APK on every push to main, PR, tag,
+# or manual run. Uploads the APK as an artifact AND attaches it to the
+# GitHub Release for the resolved version (push events only).
+on:
+  push:
+    branches: [ main ]
+    tags: [ 'v*' ]
+  pull_request:
+    branches: [ main ]
+  workflow_dispatch:
+
+permissions:
+  contents: write  # needed to attach the APK to GitHub Releases
+
+concurrency:
+  group: wstune-android-apk-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build-apk:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup Java 17 (required by Android SDK / Gradle)
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Setup .NET 10 SDK
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+
+      - name: Install Android workload
+        run: dotnet workload install android
+
+      - name: Compute version (Nerdbank.GitVersioning)
+        id: ver
+        shell: bash
+        run: |
+          dotnet tool install --global nbgv || true
+          export PATH="$HOME/.dotnet/tools:$PATH"
+          # Same proven pattern as release.yml: JSON output, then pick the field.
+          # (nbgv 3.x has no --field flag, so parse stdout with python3.)
+          V=$(nbgv get-version -f json | python3 -c "import json,sys; print(json.load(sys.stdin)['SimpleVersion'])")
+          echo "Resolved version: $V"
+          echo "version=$V" >> "$GITHUB_OUTPUT"
+
+      - name: Restore + Build Release APK
+        env:
+          ANDROID_KEYSTORE_B64: ${{ secrets.ANDROID_KEYSTORE_B64 }}
+          ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
+        run: |
+          # Materialize the stable release keystore (same key on every build → updates install over old APKs).
+          if [ -n "$ANDROID_KEYSTORE_B64" ]; then
+            printf '%s' "$ANDROID_KEYSTORE_B64" | base64 -d > Src/WsTune.Droid/wstune.keystore
+            ls -la Src/WsTune.Droid/wstune.keystore
+          else
+            echo "::warning::ANDROID_KEYSTORE_B64 secret missing — falling back to random debug key"
+          fi
+
+          dotnet restore Src/WsTune.Droid/WsTune.Droid.csproj
+          dotnet build Src/WsTune.Droid/WsTune.Droid.csproj \
+            -c Release -f net10.0-android \
+            -p:Version=${{ steps.ver.outputs.version }} \
+            -p:ApplicationDisplayVersion=${{ steps.ver.outputs.version }} \
+            -p:AndroidKeyStore=True \
+            -p:AndroidSigningKeyStore="$PWD/Src/WsTune.Droid/wstune.keystore" \
+            -p:AndroidSigningKeyAlias=wstune \
+            -p:AndroidSigningStorePass="$ANDROID_KEYSTORE_PASSWORD" \
+            -p:AndroidSigningKeyPass="$ANDROID_KEY_PASSWORD" \
+            --no-restore
+
+      - name: Collect APKs
+        shell: bash
+        run: |
+          mkdir -p artifacts
+          find Src/WsTune.Droid/bin/Release -name '*-Signed.apk' -exec cp -v {} artifacts/ \;
+          # Friendly names: keep original + versioned copy
+          for f in artifacts/*-Signed.apk; do
+            [ -e "$f" ] || continue
+            base=$(basename "$f" -Signed.apk)
+            cp -v "$f" "artifacts/${base}-v${{ steps.ver.outputs.version }}.apk"
+          done
+          ls -lh artifacts/
+
+      - name: Upload APK artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: wstune-listener-apk
+          path: artifacts/*.apk
+          if-no-files-found: error
+
+      # Publish the APK into the repo's Releases section (not just Actions artifacts).
+      # On push to main / v* tags both this workflow and release.yml resolve the same
+      # nbgv version, so they attach to the same tag; softprops appends assets to an
+      # existing release instead of replacing it. PRs only get the artifact above.
+      - name: Attach APK to GitHub Release
+        if: github.event_name == 'push'
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: v${{ steps.ver.outputs.version }}
+          name: WSTUN v${{ steps.ver.outputs.version }}
+          append_body: true
+          fail_on_unmatched_files: true
+          body: |
+            **Android**
+            - `com.wstune.listener-*.apk` — WsTune Listener for Android (universal `arm64-v8a` + `arm`), built from `Src/WsTune.Droid`.
+          files: |
+            artifacts/*.apk
