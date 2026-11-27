@@ -25,6 +25,18 @@ public static class TunnelBuffers
         => ArrayPool<byte>.Shared.Return(rented, clearArray: false);
 
     public static void ConfigureTcpClient(TcpClient client)
+        => ConfigureTcpClient(client, 10, 5, 3);
+
+    /// <summary>
+    /// Applies the tunnel socket options. <paramref name="keepAliveTimeSeconds"/> /
+    /// <paramref name="keepAliveIntervalSeconds"/> / <paramref name="keepAliveRetryCount"/> tune
+    /// how fast a dead network peer is detected (defaults ~30s). Values &lt;= 0 keep the OS default.
+    /// </summary>
+    public static void ConfigureTcpClient(
+        TcpClient client,
+        int keepAliveTimeSeconds,
+        int keepAliveIntervalSeconds,
+        int keepAliveRetryCount)
     {
         client.NoDelay = true;
         try
@@ -38,9 +50,12 @@ public static class TunnelBuffers
             // peer can look "connected" for a very long time.
             socket.SetSocketOption(SocketOptionLevel.Socket, SocketOptionName.KeepAlive, true);
 #if NET6_0_OR_GREATER
-            // Probe after 30s idle, then every 10s (seconds).
-            socket.SetSocketOption(SocketOptionLevel.Tcp, SocketOptionName.TcpKeepAliveTime, 30);
-            socket.SetSocketOption(SocketOptionLevel.Tcp, SocketOptionName.TcpKeepAliveInterval, 10);
+            if (keepAliveTimeSeconds > 0)
+                socket.SetSocketOption(SocketOptionLevel.Tcp, SocketOptionName.TcpKeepAliveTime, keepAliveTimeSeconds);
+            if (keepAliveIntervalSeconds > 0)
+                socket.SetSocketOption(SocketOptionLevel.Tcp, SocketOptionName.TcpKeepAliveInterval, keepAliveIntervalSeconds);
+            if (keepAliveRetryCount > 0)
+                socket.SetSocketOption(SocketOptionLevel.Tcp, SocketOptionName.TcpKeepAliveRetryCount, keepAliveRetryCount);
 #endif
         }
         catch

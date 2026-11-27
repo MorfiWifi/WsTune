@@ -23,5 +23,20 @@ public class TcpFw4Config
     /// <summary>How often the watchdog scans for idle connections.</summary>
     public TimeSpan CheckInterval { set; get; } = TimeSpan.FromMinutes(1);
 
+    /// <summary>
+    /// If a connection has no activity for this long AND <see cref="IsDataPending"/> reports
+    /// undrained outbound data, it is reset. Catches half-open flows quickly without killing
+    /// healthy idle sessions.
+    /// </summary>
+    public TimeSpan StuckTimeout { set; get; } = TimeSpan.FromMinutes(2);
+
+    /// <summary>Reports whether a connection still has queued outbound bytes (stuck detection).</summary>
+    public Func<Guid, bool>? IsDataPending { set; get; }
+
+    // TCP keepalive tuning (seconds). Lower values detect a dead network peer in ~30s.
+    public int TcpKeepAliveTimeSeconds { set; get; } = 10;
+    public int TcpKeepAliveIntervalSeconds { set; get; } = 5;
+    public int TcpKeepAliveRetryCount { set; get; } = 3;
+
     public string Name { get; set; } = string.Empty;
 }

@@ -15,6 +15,37 @@ public sealed class PipelinedHubOutbound : IHubOutbounds, IAsyncDisposable
     private CancellationToken _pumpCancellationToken;
     private bool _pumpConfigured;
 
+    public PipelinedHubOutbound()
+    {
+        // A full backlog means the connection is not draining; ask the host to reset just that
+        // TCP connection (so the app reconnects) instead of buffering without bound.
+        _pump.OnOverflow = id =>
+        {
+            var reset = ConnectionReset;
+            if (reset is not null)
+                _ = reset(id);
+        };
+    }
+
+    /// <summary>Max queued bytes before the offending connection is reset. See <see cref="TunnelSendPump"/>.</summary>
+    public long MaxQueuedBytes
+    {
+        get => _pump.MaxQueuedBytes;
+        set => _pump.MaxQueuedBytes = value;
+    }
+
+    /// <summary>Resets a single connection (both sockets) when its backlog overflows.</summary>
+    public Func<Guid, Task>? ConnectionReset { get; set; }
+
+    /// <summary>True when the connection still has undrained outbound bytes.</summary>
+    public Func<Guid, bool>? IsDataPending { get; set; }
+
+    public bool HasPendingData(Guid connectionId) => _pump.HasPendingData(connectionId);
+
+    public event EventHandler? Reconnected;
+
+    public void NotifyReconnected() => Reconnected?.Invoke(this, EventArgs.Empty);
+
     public void StartPump(CancellationToken cancellationToken)
     {
         _pumpCancellationToken = cancellationToken;

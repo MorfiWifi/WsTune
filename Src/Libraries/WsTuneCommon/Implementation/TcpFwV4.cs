@@ -48,6 +48,11 @@ public class TcpFwV4 : IFwV4
         _enableWatchdog = config.EnableWatchdog;
         _idleTimeout = config.IdleTimeout;
         _checkInterval = config.CheckInterval;
+        _stuckTimeout = config.StuckTimeout;
+        _isDataPending = config.IsDataPending;
+        _keepAliveTime = config.TcpKeepAliveTimeSeconds;
+        _keepAliveInterval = config.TcpKeepAliveIntervalSeconds;
+        _keepAliveRetry = config.TcpKeepAliveRetryCount;
 
         if (config.OnListenerDataReceived is not null)
             _listener = new TcpListener(IPAddress.Any, _listenPort);
@@ -60,6 +65,11 @@ public class TcpFwV4 : IFwV4
     private readonly ConcurrentDictionary<Guid, DateTime> _lastActivity = new();
     private readonly TimeSpan _idleTimeout;
     private readonly TimeSpan _checkInterval;
+    private readonly TimeSpan _stuckTimeout;
+    private readonly Func<Guid, bool>? _isDataPending;
+    private readonly int _keepAliveTime;
+    private readonly int _keepAliveInterval;
+    private readonly int _keepAliveRetry;
 
     public string Name { get; }
 
@@ -99,11 +109,23 @@ public class TcpFwV4 : IFwV4
 
     public async Task OpenServerConnectionAsync(Guid connectionId, CancellationToken cancellationToken)
     {
+        // Idempotent: a replayed ForwardConnection (after a reconnect) must not open a second
+        // socket to the target for a connection that is already open.
+        if (_serverConnections.ContainsKey(connectionId))
+            return;
+
         var tcpClient = new TcpClient();
-        TunnelBuffers.ConfigureTcpClient(tcpClient);
+        TunnelBuffers.ConfigureTcpClient(tcpClient, _keepAliveTime, _keepAliveInterval, _keepAliveRetry);
         // ConnectAsync(host, port) resolves hostnames via DNS and accepts literal IPs.
         await tcpClient.ConnectAsync(_targetHost, _targetPort);
-        _serverConnections[connectionId] = tcpClient;
+
+        if (_serverConnections.TryAdd(connectionId, tcpClient) == false)
+        {
+            // Lost a race with a concurrent open; keep the existing socket.
+            tcpClient.Close();
+            return;
+        }
+
         _lastActivity[connectionId] = DateTime.UtcNow;
 
         _ = Task.Run(async () =>
@@ -191,7 +213,7 @@ public class TcpFwV4 : IFwV4
             {
                 // client = await _listener.AcceptTcpClientAsync(cancellationToken);
                 client = await _listener.AcceptTcpClientAsync();
-                TunnelBuffers.ConfigureTcpClient(client);
+                TunnelBuffers.ConfigureTcpClient(client, _keepAliveTime, _keepAliveInterval, _keepAliveRetry);
             }
             catch (OperationCanceledException)
             {
@@ -261,6 +283,13 @@ public class TcpFwV4 : IFwV4
         var connectionFound = _listenerConnections.TryGetValue(connectionId, out var listener);
         return (connectionFound, listener?.GetStream());
     }
+
+    /// <summary>
+    /// Forcibly tears down both sides of a connection and notifies the peer. Used by the
+    /// overflow/stuck reset policy so the local application reconnects instead of hanging.
+    /// </summary>
+    public Task ResetConnectionAsync(Guid connectionId)
+        => CloseConnectionAsync(connectionId, CancellationToken.None);
 
     private async Task CloseConnectionAsync(Guid connectionId, CancellationToken ct)
     {
@@ -347,7 +376,13 @@ public class TcpFwV4 : IFwV4
             var now = DateTime.UtcNow;
             foreach (var kv in _lastActivity.ToArray())
             {
-                if (now - kv.Value > _idleTimeout)
+                var idle = now - kv.Value;
+
+                // Stuck: no activity for StuckTimeout AND outbound data is still queued (the
+                // peer is not draining). Healthy idle sessions have no queued data and survive.
+                var stuck = idle > _stuckTimeout && (_isDataPending?.Invoke(kv.Key) ?? false);
+
+                if (idle > _idleTimeout || stuck)
                 {
                     await CloseConnectionAsync(kv.Key, cancellationToken);
                 }

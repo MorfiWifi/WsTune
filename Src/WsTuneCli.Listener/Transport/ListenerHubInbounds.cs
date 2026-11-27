@@ -1,4 +1,4 @@
-﻿using Microsoft.AspNetCore.SignalR.Client;
+using Microsoft.AspNetCore.SignalR.Client;
 using WsTune.SignalR.Extensions;
 using WsTuneCommon.Interfaces;
 using WsTuneCommon.Models;
@@ -33,5 +33,25 @@ public class ListenerHubInbounds : IHubInbounds
                 await fw.SendDataToListenerAsync(packet.ConnectionId, packet.Data, packet.Data.Length, _cancellationToken);
             }
         });
+    }
+
+    /// <summary>
+    /// Re-sends <c>ForwardConnection</c> for every still-active local TCP connection. Called after
+    /// the hub (re)connects so a server restart or long outage does not leave the server without
+    /// routing state for connections that are alive on the client. The server opens idempotently.
+    /// </summary>
+    public static async Task ReplayActiveConnectionsAsync(PipelinedHubOutbound hubOutbounds)
+    {
+        foreach (var kv in ListenerSingletons.ConnectionPackets.ToArray())
+        {
+            try
+            {
+                await hubOutbounds.SendAsync("ForwardConnection", kv.Value).ConfigureAwait(false);
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Replay ForwardConnection error: {ex.Message}");
+            }
+        }
     }
 }

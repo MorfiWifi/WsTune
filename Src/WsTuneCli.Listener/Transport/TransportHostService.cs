@@ -1,4 +1,4 @@
-﻿using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using WsTune.SignalR.Extensions;
@@ -32,17 +32,41 @@ public class TransportHostService : BackgroundService
         _appSettings.Identity = IdentityGenerator.ResolveClient(_appSettings.Identity);
         _logger.LogInformation("Listener identity: {Identity}", _appSettings.Identity);
 
-        var hubOutbounds = new PipelinedHubOutbound();
-
         var tunnels = _appSettings.Configs;
 
         var fws = new Dictionary<string, IFwV4>();
 
+        var hubOutbounds = new PipelinedHubOutbound
+        {
+            MaxQueuedBytes = _appSettings.MaxQueuedBytes
+        };
+
+        // Overflow/stuck reset: tear down just the offending local TCP connection so the app
+        // reconnects instead of hanging on a dead flow.
+        hubOutbounds.ConnectionReset = id =>
+        {
+            if (ListenerSingletons.ConnectionFwName.TryGetValue(id, out var name) &&
+                fws.TryGetValue(name, out var fw))
+            {
+                return fw.ResetConnectionAsync(id);
+            }
+
+            return Task.CompletedTask;
+        };
+        hubOutbounds.IsDataPending = id => hubOutbounds.HasPendingData(id);
+
+        // After a (re)connect, replay ForwardConnection for still-active local sockets so a
+        // server restart / long outage does not leave the server without routing state.
+        hubOutbounds.Reconnected += (_, _) =>
+            _ = ListenerHubInbounds.ReplayActiveConnectionsAsync(hubOutbounds);
+
         var hubInbound = new ListenerHubInbounds(fws, cancellationToken);
+        var endpoints = BuildEndpoints(_appSettings, "client");
         var options = GenerateHubOptions(
             hubInbound,
             hubOutbounds,
-            $"{_appSettings.SignalREndpoint}?identity={_appSettings.Identity}&peerType=client");
+            endpoints[0],
+            endpoints.Skip(1).ToList());
         BeatHub bHub = new BeatHub(options, _logger);
 
         hubOutbounds.StartPump(cancellationToken);
@@ -55,7 +79,12 @@ public class TransportHostService : BackgroundService
         foreach (var config in tunnels)
         {
             var listenerConfig = config.CreateTcpConfiguration(_appSettings.Identity , hubOutbounds);
-            
+            listenerConfig.StuckTimeout = _appSettings.StuckTimeout;
+            listenerConfig.IsDataPending = id => hubOutbounds.HasPendingData(id);
+            listenerConfig.TcpKeepAliveTimeSeconds = _appSettings.TcpKeepAliveTimeSeconds;
+            listenerConfig.TcpKeepAliveIntervalSeconds = _appSettings.TcpKeepAliveIntervalSeconds;
+            listenerConfig.TcpKeepAliveRetryCount = _appSettings.TcpKeepAliveRetryCount;
+
             IFwV4 fw = new TcpFwV4(listenerConfig);
             
             fws[config.Name] = fw;
@@ -65,9 +94,36 @@ public class TransportHostService : BackgroundService
 
         await Task.WhenAll(fwTasks);
     }
+
+    /// <summary>
+    /// Builds the full rendezvous URLs (primary + fallbacks) with the identity/peerType query
+    /// appended, preserving any query the caller already put on the endpoint.
+    /// </summary>
+    public static List<string> BuildEndpoints(AppSettings appSettings, string peerType)
+    {
+        var endpoints = new List<string>();
+
+        void Add(string? endpoint)
+        {
+            if (string.IsNullOrWhiteSpace(endpoint))
+                return;
+
+            var separator = endpoint.Contains('?') ? '&' : '?';
+            endpoints.Add($"{endpoint}{separator}identity={appSettings.Identity}&peerType={peerType}");
+        }
+
+        Add(appSettings.SignalREndpoint);
+        foreach (var fallback in appSettings.SignalRFallbackEndpoints)
+            Add(fallback);
+
+        if (endpoints.Count == 0)
+            endpoints.Add(string.Empty);
+
+        return endpoints;
+    }
     
    public static BeatHubOptions GenerateHubOptions(IHubInbounds udpHubInbounds, IHubOutbounds udpHubOutbounds,
-        string singlarEndpoint)
+        string singlarEndpoint, List<string>? fallbackEndpoints = null)
     {
         return new BeatHubOptions()
         {
@@ -75,6 +131,7 @@ public class TransportHostService : BackgroundService
             Outbounds = udpHubOutbounds,
             Delay = 60_000,
             Url = singlarEndpoint,
+            FallbackUrls = fallbackEndpoints ?? [],
             HeartBitFunctionName = "Ping",
             CustomConfigurationsFunc = connectionBuilder =>
                 connectionBuilder.AddJsonProtocol(options =>

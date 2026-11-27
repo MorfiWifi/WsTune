@@ -1,4 +1,4 @@
-﻿using System.Text.Json.Serialization;
+using System.Text.Json.Serialization;
 using Microsoft.AspNetCore.SignalR.Client;
 
 namespace WsTune.SignalR.Extensions;
@@ -6,6 +6,14 @@ namespace WsTune.SignalR.Extensions;
 public class BeatHubOptions
 {
     public string Url { set; get; } = "";
+
+    /// <summary>
+    /// Additional rendezvous URLs tried (in order, round-robin) when <see cref="Url"/> is
+    /// unreachable. Enables failover when the primary rendezvous is down. Empty = original
+    /// single-endpoint behaviour.
+    /// </summary>
+    public List<string> FallbackUrls { set; get; } = [];
+
     public string HeartBitFunctionName { set; get; } = "Ping";
     public int Delay {set; get;}
     public IHubInbounds? Inbound { set; get; }

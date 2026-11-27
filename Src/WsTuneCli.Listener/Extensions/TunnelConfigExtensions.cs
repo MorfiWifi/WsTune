@@ -1,4 +1,4 @@
-﻿using WsTune.SignalR.Extensions;
+using WsTune.SignalR.Extensions;
 using WsTuneCommon.Implementation;
 using WsTuneCommon.Models;
 
@@ -53,6 +53,7 @@ public static class TunnelConfigExtensions
             };
 
             ListenerSingletons.ConnectionFwName[context.ConnectionId] = context.Accessor.Name;
+            ListenerSingletons.ConnectionPackets[context.ConnectionId] = packet;
 
             await hubOutbounds.SendAsync("ForwardConnection", packet);
         };
@@ -62,6 +63,7 @@ public static class TunnelConfigExtensions
         => async (context, token) =>
         {
             ListenerSingletons.ConnectionFwName.TryRemove(context.ConnectionId, out _);
+            ListenerSingletons.ConnectionPackets.TryRemove(context.ConnectionId, out _);
 
             var packet = new DataPacket
             {

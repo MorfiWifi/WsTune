@@ -1,4 +1,4 @@
-﻿using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using WsTune.SignalR.Extensions;
@@ -20,7 +20,10 @@ public class TransportHostService(
         appSettings.Identity = IdentityGenerator.ResolveServer(appSettings.Identity);
         logger.LogInformation("Server identity: {Identity}", appSettings.Identity);
 
-        var hubOutbounds = new PipelinedHubOutbound();
+        var hubOutbounds = new PipelinedHubOutbound
+        {
+            MaxQueuedBytes = appSettings.MaxQueuedBytes
+        };
 
         var loggerFactory = LoggerFactory.Create(op => op
             .ClearProviders()
@@ -31,10 +34,12 @@ public class TransportHostService(
         var hubLogger = loggerFactory.CreateLogger<BeatHub>();
         
         var hubInbound = new SeverHubInbounds(appSettings, hubOutbounds, cancellationToken);
+        var endpoints = BuildEndpoints(appSettings);
         var options = GenerateHubOptions(
             hubInbound,
             hubOutbounds,
-            $"{appSettings.SignalREndpoint}?identity={appSettings.Identity}&peerType=server");
+            endpoints[0],
+            endpoints.Skip(1).ToList());
         BeatHub bHub = new BeatHub(options, hubLogger);
 
         hubOutbounds.StartPump(cancellationToken);
@@ -49,8 +54,35 @@ public class TransportHostService(
         await Task.WhenAny(hubTask, infTask);
     }
 
+    /// <summary>
+    /// Builds the full rendezvous URLs (primary + fallbacks) with the identity/peerType query
+    /// appended, preserving any query the caller already put on the endpoint.
+    /// </summary>
+    public static List<string> BuildEndpoints(AppSettings appSettings)
+    {
+        var endpoints = new List<string>();
+
+        void Add(string? endpoint)
+        {
+            if (string.IsNullOrWhiteSpace(endpoint))
+                return;
+
+            var separator = endpoint.Contains('?') ? '&' : '?';
+            endpoints.Add($"{endpoint}{separator}identity={appSettings.Identity}&peerType=server");
+        }
+
+        Add(appSettings.SignalREndpoint);
+        foreach (var fallback in appSettings.SignalRFallbackEndpoints)
+            Add(fallback);
+
+        if (endpoints.Count == 0)
+            endpoints.Add(string.Empty);
+
+        return endpoints;
+    }
+
     public static BeatHubOptions GenerateHubOptions(IHubInbounds udpHubInbounds, IHubOutbounds udpHubOutbounds,
-        string singlarEndpoint)
+        string singlarEndpoint, List<string>? fallbackEndpoints = null)
     {
         return new BeatHubOptions()
         {
@@ -58,6 +90,7 @@ public class TransportHostService(
             Outbounds = udpHubOutbounds,
             Delay = 60_000,
             Url = singlarEndpoint,
+            FallbackUrls = fallbackEndpoints ?? [],
             HeartBitFunctionName = "Ping",
             CustomConfigurationsFunc = connectionBuilder =>
                 connectionBuilder.AddJsonProtocol(options =>

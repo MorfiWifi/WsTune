@@ -1,4 +1,4 @@
-﻿using Microsoft.AspNetCore.SignalR.Client;
+using Microsoft.AspNetCore.SignalR.Client;
 using Microsoft.Extensions.Logging;
 using Microsoft.AspNetCore.SignalR.Protocol;
 using Microsoft.Extensions.DependencyInjection;
@@ -20,6 +20,11 @@ public class BeatHub : IAsyncDisposable
     private readonly ILogger _logger;
     private CancellationToken? _cancellationToken;
 
+    // Rendezvous endpoints to try in order (primary first, then fallbacks). A dead primary is
+    // rotated out on the next connect attempt so the tunnel survives a single hub outage.
+    private readonly string[] _urls;
+    private int _urlIndex;
+
     public BeatHub(BeatHubOptions options, ILogger logger)
     {
         ArgumentNullException.ThrowIfNull(options);
@@ -31,20 +36,39 @@ public class BeatHub : IAsyncDisposable
         _outbounds = options.Outbounds
             ?? throw new ArgumentException("Outbound hub handlers must be configured.", nameof(options));
         _logger = logger;
+        _urls = BuildUrls(options);
     }
+
+    private static string[] BuildUrls(BeatHubOptions options)
+    {
+        var urls = new List<string>();
+        if (string.IsNullOrWhiteSpace(options.Url) == false)
+            urls.Add(options.Url);
+
+        foreach (var fallback in options.FallbackUrls)
+        {
+            if (string.IsNullOrWhiteSpace(fallback) == false && urls.Contains(fallback) == false)
+                urls.Add(fallback);
+        }
+
+        // Keep at least the configured URL so Build() fails loudly if none was supplied.
+        return urls.Count == 0 ? [options.Url] : urls.ToArray();
+    }
+
+    private string CurrentUrl => _urls[_urlIndex % _urls.Length];
 
     public async Task Start(CancellationToken cancellationToken = default)
     {
         _cancellationToken = cancellationToken;
         while (cancellationToken.IsCancellationRequested == false)
         {
-            _logger.LogDebug($"Starting beating hub Connecting to {_options.Url}");
+            _logger.LogDebug($"Starting beating hub Connecting to {CurrentUrl}");
 
             await HealthCheckAndReconnect();
 
             await Task.Delay(_options.Delay + _random.Next(10, 500), cancellationToken);
 
-            _logger.LogDebug($"Reconnecting to  {_options.Url}");
+            _logger.LogDebug($"Reconnecting to  {CurrentUrl}");
         }
     }
 
@@ -61,17 +85,28 @@ public class BeatHub : IAsyncDisposable
     {
         if (_hubConnection == null || _hubConnection.State == HubConnectionState.Disconnected)
         {
-            _logger.LogDebug($"building hub connection {_options.Url}");
+            _logger.LogDebug($"building hub connection {CurrentUrl}");
 
             _hubConnection = BuildHubConnection();
 
             try
             {
                 await _hubConnection.StartAsync(_cancellationToken ?? CancellationToken.None);
+
+                // Fresh (re)connect: let the host replay any state that lives only on the peer
+                // (e.g. the listener re-sends ForwardConnection for active local sockets).
+                _outbounds.NotifyReconnected();
             }
             catch (Exception e)
             {
                 _logger.LogError(e, "exception starting hub connection");
+
+                // Try the next rendezvous endpoint on the following iteration.
+                if (_urls.Length > 1)
+                {
+                    _urlIndex = (_urlIndex + 1) % _urls.Length;
+                    _logger.LogWarning("Failing over to rendezvous endpoint {Url}", CurrentUrl);
+                }
             }
         }
     }
@@ -80,7 +115,7 @@ public class BeatHub : IAsyncDisposable
     {
         if (_hubConnection?.State == HubConnectionState.Connected)
         {
-            _logger.LogDebug($"Health checking  {_options.Url}");
+            _logger.LogDebug($"Health checking  {CurrentUrl}");
 
             try
             {
@@ -97,7 +132,7 @@ public class BeatHub : IAsyncDisposable
     {
         if (_hubConnection?.State == HubConnectionState.Disconnected)
         {
-            _logger.LogDebug($"disposing connection {_options.Url}");
+            _logger.LogDebug($"disposing connection {CurrentUrl}");
 
             try
             {
@@ -113,7 +148,7 @@ public class BeatHub : IAsyncDisposable
     private HubConnection BuildHubConnection()
     {
         var connectionBuilder = new HubConnectionBuilder()
-            .WithUrl(_options.Url)
+            .WithUrl(CurrentUrl)
             // Reconnect fast and forever. The SignalR default policy ([0,2,10,30]s then
             // gives up) leaves multi-second data gaps and abandons the connection after
             // ~42s, relying on the outer 60s rebuild loop.
@@ -147,6 +182,9 @@ public class BeatHub : IAsyncDisposable
         hubConnection.Reconnected += s =>
         {
             _logger.LogDebug("Reconnected: {S}", s);
+
+            // SignalR's own automatic reconnect succeeded: replay peer-side state too.
+            _outbounds.NotifyReconnected();
             return Task.CompletedTask;
         };
 

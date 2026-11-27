@@ -20,6 +20,10 @@ public class BasicHubOutbound : IHubOutbounds
     // Only paid while disconnected; a connected send returns immediately.
     private static readonly TimeSpan ReconnectPollInterval = TimeSpan.FromMilliseconds(25);
 
+    public event EventHandler? Reconnected;
+
+    public void NotifyReconnected() => Reconnected?.Invoke(this, EventArgs.Empty);
+
     public void Initialize(HubConnection hubConnection)
     {
         Hub = hubConnection;

@@ -28,6 +28,22 @@ public class SeverHubInbounds : IHubInbounds
         _appSettings = appSettings;
         _hubOutbounds = hubOutbounds;
         _ct = ct;
+
+        // Overflow/stuck reset: tear down just the offending target connection so the local app
+        // reconnects instead of hanging on a dead flow.
+        _hubOutbounds.ConnectionReset = ResetConnectionAsync;
+        _hubOutbounds.IsDataPending = id => _hubOutbounds.HasPendingData(id);
+    }
+
+    private Task ResetConnectionAsync(Guid connectionId)
+    {
+        if (_connectionDetails.TryGetValue(connectionId, out var detail) &&
+            _fws.TryGetValue(detail.ServerIdentity(), out var fw))
+        {
+            return fw.ResetConnectionAsync(connectionId);
+        }
+
+        return Task.CompletedTask;
     }
 
     #endregion
@@ -84,7 +100,12 @@ public class SeverHubInbounds : IHubInbounds
                     OnServerDataReceived = OnServerDataReceived,
                     EnableWatchdog = true,
                     TargetPort = connection.Port,
-                    TargetHost = connection.TargetHost
+                    TargetHost = connection.TargetHost,
+                    StuckTimeout = _appSettings.StuckTimeout,
+                    IsDataPending = id => _hubOutbounds.HasPendingData(id),
+                    TcpKeepAliveTimeSeconds = _appSettings.TcpKeepAliveTimeSeconds,
+                    TcpKeepAliveIntervalSeconds = _appSettings.TcpKeepAliveIntervalSeconds,
+                    TcpKeepAliveRetryCount = _appSettings.TcpKeepAliveRetryCount
                 };
 
                 fw = new TcpFwV4(fwConfig);
