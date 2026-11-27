@@ -5,6 +5,10 @@ namespace WsTuneCommon;
 
 /// <summary>
 /// Decouples TCP read loops from SignalR send latency while preserving per-pump FIFO order.
+///
+/// The pump is lossless: if a send fails (for example the hub dropped mid-invocation) the SAME
+/// item is retried until it is delivered or the pump is shut down. Bytes are never skipped,
+/// which is what keeps a tunneled TCP stream intact across a reconnect.
 /// </summary>
 public sealed class TunnelSendPump : IAsyncDisposable
 {
@@ -16,9 +20,10 @@ public sealed class TunnelSendPump : IAsyncDisposable
             SingleWriter = false
         });
 
+    private readonly CancellationTokenSource _disposeCts = new();
+    private CancellationTokenSource? _linkedCts;
     private Task? _pumpTask;
     private Func<TunnelSendItem, CancellationToken, Task>? _sendAsync;
-    private CancellationToken _cancellationToken;
 
     public void Start(Func<TunnelSendItem, CancellationToken, Task> sendAsync, CancellationToken cancellationToken)
     {
@@ -26,8 +31,8 @@ public sealed class TunnelSendPump : IAsyncDisposable
             return;
 
         _sendAsync = sendAsync;
-        _cancellationToken = cancellationToken;
-        _pumpTask = Task.Run(() => PumpAsync(cancellationToken), cancellationToken);
+        _linkedCts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken, _disposeCts.Token);
+        _pumpTask = Task.Run(() => PumpAsync(_linkedCts.Token), _linkedCts.Token);
     }
 
     public ValueTask EnqueueAsync(string method, DataPacket packet, CancellationToken cancellationToken = default)
@@ -41,28 +46,50 @@ public sealed class TunnelSendPump : IAsyncDisposable
         // Drain loop preserves per-pump FIFO order without IAsyncEnumerable,
         // which is unavailable on netstandard2.0/net48.
         var reader = _channel.Reader;
-        while (await reader.WaitToReadAsync(cancellationToken).ConfigureAwait(false))
+        try
         {
-            while (reader.TryRead(out var item))
+            while (await reader.WaitToReadAsync(cancellationToken).ConfigureAwait(false))
             {
-                try
+                while (reader.TryRead(out var item))
                 {
-                    await _sendAsync(item, cancellationToken).ConfigureAwait(false);
-                }
-                catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
-                {
-                    return;
-                }
-                catch (Exception ex)
-                {
-                    Console.WriteLine($"Tunnel send pump error: {ex.Message}");
+                    // Retry the same item until it is delivered. A transient failure must not
+                    // drop tunnel bytes, otherwise the peer's TCP stream desyncs.
+                    while (true)
+                    {
+                        try
+                        {
+                            await _sendAsync(item, cancellationToken).ConfigureAwait(false);
+                            break;
+                        }
+                        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+                        {
+                            return;
+                        }
+                        catch (Exception ex)
+                        {
+                            Console.WriteLine($"Tunnel send pump error: {ex.Message} — retrying");
+                            try
+                            {
+                                await Task.Delay(50, cancellationToken).ConfigureAwait(false);
+                            }
+                            catch (OperationCanceledException)
+                            {
+                                return;
+                            }
+                        }
+                    }
                 }
             }
+        }
+        catch (OperationCanceledException)
+        {
+            // Expected on shutdown.
         }
     }
 
     public async ValueTask DisposeAsync()
     {
+        _disposeCts.Cancel();
         _channel.Writer.TryComplete();
         if (_pumpTask is not null)
         {

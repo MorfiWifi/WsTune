@@ -33,7 +33,11 @@ public sealed class PipelinedHubOutbound : IHubOutbounds, IAsyncDisposable
         if (!_pumpConfigured)
             return;
 
-        _pump.Start(async (item, ct) => await _inner.SendAsync(item.Method, item.Packet).ConfigureAwait(false), _pumpCancellationToken);
+        // The pump token flows into the inner send so a blocked (waiting-for-reconnect) send is
+        // cancelled on shutdown instead of leaking. The inner outbound retries losslessly.
+        _pump.Start(
+            async (item, ct) => await _inner.SendAsync(item.Method, item.Packet, ct).ConfigureAwait(false),
+            _pumpCancellationToken);
     }
 
     public ValueTask EnqueueDataAsync(string method, DataPacket packet, CancellationToken cancellationToken = default)

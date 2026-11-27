@@ -1,4 +1,4 @@
-﻿using Microsoft.AspNetCore.SignalR;
+using Microsoft.AspNetCore.SignalR;
 using WsTuneCli.Host;
 using WsTuneCommon;
 using WsTuneCommon.Models;
@@ -75,8 +75,13 @@ public class THub : Hub
 
     public override async Task OnDisconnectedAsync(Exception? exception)
     {
+        // Safety-net cleanup for clients that crashed without sending ForwardDisConnection.
+        // ForwardDisConnection is now reliable, so this is only a backstop; the window is kept
+        // deliberately long so an idle-but-alive tunnel (whose mapping is refreshed by data or
+        // by an explicit disconnect) is never pruned out from under a reconnecting client.
+        var staleBefore = DateTime.UtcNow - TimeSpan.FromHours(1);
         var oldKeys = HostSingletons.ConnectionDetails
-            .Where(x => x.Value.lastUpdate < DateTime.Now - TimeSpan.FromMinutes(1))
+            .Where(x => x.Value.lastUpdate < staleBefore)
             .Select(x => x.Key)
             .ToList();
 

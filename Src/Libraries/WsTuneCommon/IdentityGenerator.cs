@@ -25,17 +25,39 @@ public static class IdentityGenerator
         => NewId(string.IsNullOrWhiteSpace(configured) ? "client" : configured);
 
     /// <summary>
-    /// Servers prefer a configured identity (clients route to it) and fall back to an
-    /// auto-generated one when none is provided.
+    /// Servers prefer a configured identity (clients route to it). When none is provided we
+    /// persist an auto-generated one next to the executable and reuse it on the next start, so
+    /// the server keeps the SAME routing address across restarts. A per-process random id would
+    /// silently break clients after every restart (they would keep routing to a dead group).
     /// </summary>
     public static string ResolveServer(string? configured)
     {
         var normalized = configured?.Trim();
-        if (normalized is null || normalized.Length == 0)
+        if (normalized is not null && normalized.Length > 0)
         {
-            return NewId("server");
+            return normalized;
         }
 
-        return normalized;
+        var path = Path.Combine(AppContext.BaseDirectory, ".server-identity");
+        try
+        {
+            if (File.Exists(path))
+            {
+                var existing = File.ReadAllText(path).Trim();
+                if (existing.Length > 0)
+                {
+                    return existing;
+                }
+            }
+
+            var id = NewId("server");
+            File.WriteAllText(path, id);
+            return id;
+        }
+        catch
+        {
+            // Read-only / restricted filesystem: fall back to a per-process id (old behaviour).
+            return NewId("server");
+        }
     }
 }

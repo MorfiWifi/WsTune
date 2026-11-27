@@ -32,6 +32,16 @@ public static class TunnelBuffers
             var socket = client.Client;
             socket.SendBufferSize = 256 * 1024;
             socket.ReceiveBufferSize = 256 * 1024;
+
+            // Enable TCP keepalive so a flow silently reaped by an idle NAT/firewall is
+            // detected instead of hanging until the next write fails. Without this, a dead
+            // peer can look "connected" for a very long time.
+            socket.SetSocketOption(SocketOptionLevel.Socket, SocketOptionName.KeepAlive, true);
+#if NET6_0_OR_GREATER
+            // Probe after 30s idle, then every 10s (seconds).
+            socket.SetSocketOption(SocketOptionLevel.Tcp, SocketOptionName.TcpKeepAliveTime, 30);
+            socket.SetSocketOption(SocketOptionLevel.Tcp, SocketOptionName.TcpKeepAliveInterval, 10);
+#endif
         }
         catch
         {

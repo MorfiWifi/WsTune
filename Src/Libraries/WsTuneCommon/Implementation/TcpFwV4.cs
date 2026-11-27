@@ -46,6 +46,8 @@ public class TcpFwV4 : IFwV4
         _targetHost = config.TargetHost;
         _targetPort = config.TargetPort;
         _enableWatchdog = config.EnableWatchdog;
+        _idleTimeout = config.IdleTimeout;
+        _checkInterval = config.CheckInterval;
 
         if (config.OnListenerDataReceived is not null)
             _listener = new TcpListener(IPAddress.Any, _listenPort);
@@ -56,8 +58,8 @@ public class TcpFwV4 : IFwV4
     private readonly ConcurrentDictionary<Guid, TcpClient> _listenerConnections = new();
     private readonly ConcurrentDictionary<Guid, TcpClient> _serverConnections = new();
     private readonly ConcurrentDictionary<Guid, DateTime> _lastActivity = new();
-    private static readonly TimeSpan IdleTimeout = TimeSpan.FromMinutes(5);
-    private static readonly TimeSpan CheckInterval = TimeSpan.FromMinutes(1);
+    private readonly TimeSpan _idleTimeout;
+    private readonly TimeSpan _checkInterval;
 
     public string Name { get; }
 
@@ -262,11 +264,16 @@ public class TcpFwV4 : IFwV4
 
     private async Task CloseConnectionAsync(Guid connectionId, CancellationToken ct)
     {
+        // Always release the underlying sockets first. Previously this only fired the disconnect
+        // callback, so server-side (and idle-watchdog) connections leaked their sockets and the
+        // peer was never actually closed.
+        await DisposeClientAsync(connectionId).ConfigureAwait(false);
+
         if (_onClientDisconnected is null)
             return;
 
         var model = new ForwardModelV4 { ConnectionId = connectionId, Accessor = this };
-        await _onClientDisconnected.Invoke(model, ct);
+        await _onClientDisconnected.Invoke(model, ct).ConfigureAwait(false);
     }
 
     public async Task HandleStreamAsync(Guid connectionId, NetworkStream stream, Func<ForwardModelV4, CancellationToken, Task> handler,
@@ -330,7 +337,7 @@ public class TcpFwV4 : IFwV4
         {
             try
             {
-                await Task.Delay(CheckInterval, cancellationToken);
+                await Task.Delay(_checkInterval, cancellationToken);
             }
             catch (OperationCanceledException)
             {
@@ -340,7 +347,7 @@ public class TcpFwV4 : IFwV4
             var now = DateTime.UtcNow;
             foreach (var kv in _lastActivity.ToArray())
             {
-                if (now - kv.Value > IdleTimeout)
+                if (now - kv.Value > _idleTimeout)
                 {
                     await CloseConnectionAsync(kv.Key, cancellationToken);
                 }
